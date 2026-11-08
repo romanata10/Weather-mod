@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "extremeweather:block/storm_anchor"
+    }
+  }
+}
