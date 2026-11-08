@@ -1,6 +1,7 @@
 package com.extremeweather.ocean;
 
 import dev.protomanly.pmweather.weather.WindEngine;
+import dev.protomanly.pmweather.particle.ModParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -86,7 +87,7 @@ public final class TropicalSystems {
                     int z=(int)Math.floor(player.getZ()+Math.sin(theta)*10);
                     BlockPos crest=new BlockPos(x,level.getSeaLevel()+1,z);
                     if(!level.hasChunkAt(crest) || !level.getFluidState(crest.below()).is(net.minecraft.tags.FluidTags.WATER))continue;
-                    level.sendParticles(ParticleTypes.SPLASH,x+.5,level.getSeaLevel()+.8,z+.5,7,2,.5,2,.15);
+                    level.sendParticles(ModParticleTypes.FOAM.get(),x+.5,level.getSeaLevel()+.8,z+.5,7,2,.5,2,.15);
                     if(level.random.nextInt(4)==0)SurgeData.get(level).place(level,crest,100);
                 }
             }

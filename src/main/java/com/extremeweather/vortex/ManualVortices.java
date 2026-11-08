@@ -1,6 +1,7 @@
 package com.extremeweather.vortex;
 
 import dev.protomanly.pmweather.weather.WindEngine;
+import com.extremeweather.particle.EWParticles;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -38,12 +39,12 @@ public final class ManualVortices {
                 double lean=shape==FunnelShape.DEAD_MAN_WALKING?Math.sin(age*.025+h*7)*8*h:shape==FunnelShape.LOOPING?Math.sin(h*8+age*.03)*3:0;
                 double phase=age*.09+ring*.35;
                 double x=pos.x+lean+Math.cos(phase)*r,z=pos.z+Math.sin(phase)*r;
-                level.sendParticles(ParticleTypes.CLOUD,x,pos.y+h*height,z,3,Math.min(3,r*.15),1.8,Math.min(3,r*.15),.025);
-                if(ring<4)level.sendParticles(ParticleTypes.POOF,x,pos.y+h*height,z,2,Math.min(3,r*.12),1,Math.min(3,r*.12),.02);
+                level.sendParticles(EWParticles.LAND.get(),x,pos.y+h*height,z,3,Math.min(3,r*.15),1.8,Math.min(3,r*.15),.025);
+                if(ring<4)level.sendParticles(EWParticles.DUST.get(),x,pos.y+h*height,z,2,Math.min(3,r*.12),1,Math.min(3,r*.12),.02);
                 for(int satellite=0;satellite<shape.satellites();satellite++) {
                     double angle=age*.11+satellite*Math.PI*2/shape.satellites()+h*4;
                     double orbit=r*.68;
-                    level.sendParticles(ParticleTypes.CLOUD,pos.x+Math.cos(angle)*orbit,pos.y+h*height,pos.z+Math.sin(angle)*orbit,1,.5,.5,.5,.02);
+                    level.sendParticles(EWParticles.LAND.get(),pos.x+Math.cos(angle)*orbit,pos.y+h*height,pos.z+Math.sin(angle)*orbit,1,.5,.5,.5,.02);
                 }
             }
         }

@@ -1,6 +1,8 @@
 package com.extremeweather.disaster;
 
 import dev.protomanly.pmweather.weather.WindEngine;
+import dev.protomanly.pmweather.particle.ModParticleTypes;
+import com.extremeweather.particle.EWParticles;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
@@ -91,7 +93,7 @@ public final class DisasterEngine {
             BlockPos crest=base.above();
             if(level.getFluidState(base).is(FluidTags.WATER)) {
                 data.place(level,crest,140+level.random.nextInt(100));
-                level.sendParticles(ParticleTypes.SPLASH,x+.5,sea+1,z+.5,10,1,.6,1,.15);
+                level.sendParticles(ModParticleTypes.FOAM.get(),x+.5,sea+1,z+.5,10,1,.6,1,.15);
             }
         }
     }
@@ -192,7 +194,7 @@ public final class DisasterEngine {
             if(!level.getFluidState(new BlockPos(pos.getX(),sea-1,pos.getZ())).is(FluidTags.WATER))continue;
             double phase=ticks*.05+pos.getX()*.22+pos.getZ()*.17;
             if(Math.sin(phase)>.82)
-                level.sendParticles(ParticleTypes.SPLASH,pos.getX()+.5,sea+.1,pos.getZ()+.5,3,1,.2,1,.03);
+                level.sendParticles(ModParticleTypes.FOAM.get(),pos.getX()+.5,sea+.1,pos.getZ()+.5,3,1,.2,1,.03);
         }
     }
     private void hail(ServerLevel level,ServerPlayer player) {
@@ -253,7 +255,7 @@ public final class DisasterEngine {
             for(int i=0;i<14;i++) {
                 double h=level.random.nextDouble()*16,phase=clock*.25+h*.5+i*2.4;
                 double r=.8+h*.1;
-                var particle=kind==Kind.WATERSPOUT?ParticleTypes.SPLASH:kind==Kind.SNOW_WHIRL?ParticleTypes.SNOWFLAKE:kind==Kind.FIRE_WHIRL?ParticleTypes.FLAME:ParticleTypes.CLOUD;
+                var particle=kind==Kind.WATERSPOUT?EWParticles.WATER.get():kind==Kind.SNOW_WHIRL?EWParticles.SNOW.get():kind==Kind.FIRE_WHIRL?ModParticleTypes.FLAME.get():kind==Kind.DUST_DEVIL?EWParticles.DUST.get():EWParticles.LAND.get();
                 level.sendParticles(particle,pos.x+Math.cos(phase)*r,pos.y+h,pos.z+Math.sin(phase)*r,1,0,.1,0,.02);
             }
             if(clock%20==0)for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos,pos.add(0,15,0)).inflate(3))) {

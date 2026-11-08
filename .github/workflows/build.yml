@@ -44,6 +44,15 @@ jobs:
             FIELDS=$(javap -public -classpath "$JAR" dev.protomanly.pmweather.particle.ModParticleTypes 2>&1 | head -85 || true)
             FIELDS=${FIELDS//$'\n'/'%0A'}
             echo "::notice::PMWeather particle registry fields%0A$FIELDS"
+            python3 - "$JAR" <<'PYVALIDATE'
+          import json,sys,zipfile,pathlib
+          jar=zipfile.ZipFile(sys.argv[1]); names=set(jar.namelist())
+          for path in pathlib.Path('src/main/resources/assets/extremeweather/particles').glob('*.json'):
+              for texture in json.loads(path.read_text())['textures']:
+                  namespace,name=texture.split(':',1)
+                  assert f'assets/{namespace}/textures/particle/{name}.png' in names, texture
+          print('PMWeather particle texture resource IDs validated against dependency JAR')
+          PYVALIDATE
           fi
       - name: Dedicated server and PMWeather command integration test
         shell: bash

@@ -1,6 +1,7 @@
 package com.extremeweather.fire;
 
 import com.extremeweather.block.EWBlocks;
+import dev.protomanly.pmweather.particle.ModParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -98,8 +99,8 @@ public final class WildfireManager {
                 if(age>650) {burning.remove(p);continue;}
             }
             if(clock%20==0) {
-                level.sendParticles(ParticleTypes.LARGE_SMOKE,p.getX()+.5,p.getY()+2,p.getZ()+.5,6,1,2,1,.06);
-                level.sendParticles(ParticleTypes.FLAME,p.getX()+.5,p.getY()+1,p.getZ()+.5,4,.5,.8,.5,.02);
+                level.sendParticles(ModParticleTypes.FIRE_SMOKE.get(),p.getX()+.5,p.getY()+2,p.getZ()+.5,6,1,2,1,.06);
+                level.sendParticles(ModParticleTypes.FLAME.get(),p.getX()+.5,p.getY()+1,p.getZ()+.5,4,.5,.8,.5,.02);
             }
         }
         for(BlockPos p:spread)ignite(level,p);
@@ -117,8 +118,8 @@ public final class WildfireManager {
         for(int height=0;height<18;height++) {
             double angle=clock*.11+height*.55;
             double radius=1+height*.12;
-            level.sendParticles(ParticleTypes.FLAME,center.getX()+Math.cos(angle)*radius,center.getY()+height,center.getZ()+Math.sin(angle)*radius,3,.35,.25,.35,.04);
-            if(height%3==0)level.sendParticles(ParticleTypes.LARGE_SMOKE,center.getX(),center.getY()+height,center.getZ(),3,radius,.4,radius,.04);
+            level.sendParticles(ModParticleTypes.FLAME.get(),center.getX()+Math.cos(angle)*radius,center.getY()+height,center.getZ()+Math.sin(angle)*radius,3,.35,.25,.35,.04);
+            if(height%3==0)level.sendParticles(ModParticleTypes.FIRE_SMOKE.get(),center.getX(),center.getY()+height,center.getZ(),3,radius,.4,radius,.04);
         }
         for(LivingEntity e:level.getEntitiesOfClass(LivingEntity.class,new AABB(center).inflate(4,9,4)))e.setRemainingFireTicks(Math.max(e.getRemainingFireTicks(),60));
     }
@@ -132,8 +133,8 @@ public final class WildfireManager {
             long count=burning.keySet().stream().filter(q->Math.abs(q.getX()-p.getX())<28 && Math.abs(q.getZ()-p.getZ())<28).count();
             if(count<8)continue;
             double x=p.getX(),y=p.getY()+Math.min(42,12+count),z=p.getZ();
-            level.sendParticles(ParticleTypes.CAMPFIRE_SIGNAL_SMOKE,x,y,z,(int)Math.min(65,count*2),14,5,14,.02);
-            level.sendParticles(ParticleTypes.ASH,x,y-5,z,25,17,8,17,.03);
+            level.sendParticles(ModParticleTypes.FIRE_SMOKE.get(),x,y,z,(int)Math.min(65,count*2),14,5,14,.02);
+            level.sendParticles(ModParticleTypes.EMBER.get(),x,y-5,z,25,17,8,17,.03);
             for(LivingEntity e:level.getEntitiesOfClass(LivingEntity.class,new AABB(x-22,p.getY()-4,z-22,x+22,y,z+22))) {
                 if(e.isInWaterRainOrBubble() || e.hasEffect(net.minecraft.world.effect.MobEffects.POISON))continue;
                 e.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON,100,0));

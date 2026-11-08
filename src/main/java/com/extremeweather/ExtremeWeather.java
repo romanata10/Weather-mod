@@ -1,6 +1,7 @@
 package com.extremeweather;
 
 import com.extremeweather.block.EWBlocks;
+import com.extremeweather.particle.EWParticles;
 import com.extremeweather.fire.FireEvents;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -14,6 +15,7 @@ public final class ExtremeWeather {
     public ExtremeWeather(IEventBus modBus, ModContainer container) {
         EWBlocks.BLOCKS.register(modBus);
         EWBlocks.ITEMS.register(modBus);
+        EWParticles.PARTICLES.register(modBus);
         NeoForge.EVENT_BUS.register(new FireEvents());
         NeoForge.EVENT_BUS.register(new com.extremeweather.disaster.DisasterEvents());
         NeoForge.EVENT_BUS.register(new com.extremeweather.command.EWCommands());
