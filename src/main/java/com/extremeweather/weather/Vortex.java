@@ -245,7 +245,7 @@ public class Vortex {
         float maxHardness = EWConfig.MAX_BLOCK_HARDNESS.get().floatValue() * Math.max(0.4F, ef / 5.0F);
         for (int i = 0; i < budget; i++) {
             double angle = RANDOM.nextDouble() * Mth.TWO_PI;
-            double t = RANDOM.nextFloat();
+            float t = RANDOM.nextFloat();
             float radius = getRadiusAt(t, 0.0F) * (0.4F + RANDOM.nextFloat() * 0.9F);
             int bx = Mth.floor(x + Math.cos(angle) * radius + leanX * t * 8.0F);
             int bz = Mth.floor(z + Math.sin(angle) * radius + leanZ * t * 8.0F);
