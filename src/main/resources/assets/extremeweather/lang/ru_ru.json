@@ -4,7 +4,7 @@
   "message.extremeweather.radar": "%s на расстоянии %s блоков",
   "message.extremeweather.wind": "Скорость ветра: %s блоков/тик",
   "message.extremeweather.pressure": "Давление: %s гПа",
-  "message.extremeweather.warning": "Штормовое предупреждение! Укройтесь!",
+  "message.extremeweather.warning": "Рядом шторм! Укройтесь!",
   "message.extremeweather.permission": "Нужны права оператора",
   "message.extremeweather.spawned": "Суперячейка создана",
   "block.extremeweather.storm_anchor": "Якорь шторма",
