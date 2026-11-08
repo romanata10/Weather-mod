@@ -34,6 +34,14 @@ public final class WildfireManager {
             if(burning.size()>=384)return;
         }
     }
+    public int count(){return burning.size();}
+    public void stop(ServerLevel level) {
+        for(BlockPos pos:burning.keySet()) {
+            if(level.hasChunkAt(pos) && level.getBlockState(pos.above()).is(Blocks.FIRE))
+                level.setBlock(pos.above(),Blocks.AIR.defaultBlockState(),3);
+        }
+        burning.clear();
+    }
     public String describe(ServerLevel level,BlockPos pos) {
         return "tracked="+burning.size()+", age="+burning.get(pos)+", tick="+clock+
             ", block="+level.getBlockState(pos)+", fireAbove="+level.getBlockState(pos.above());

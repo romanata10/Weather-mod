@@ -42,6 +42,11 @@ public final class SurgeData extends SavedData {
         level.setBlock(pos,Blocks.WATER.defaultBlockState(),3);
         setDirty();
     }
+    public void cleanupAll(ServerLevel level) {
+        placed.replaceAll((pos,expiry)->level.getGameTime());
+        setDirty();
+        tick(level); // unloaded positions stay recorded and will be cleaned on load
+    }
     public void tick(ServerLevel level) {
         Iterator<Map.Entry<BlockPos,Long>> it=placed.entrySet().iterator();
         while(it.hasNext()) {

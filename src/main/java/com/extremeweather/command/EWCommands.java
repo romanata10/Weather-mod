@@ -4,6 +4,9 @@ import com.extremeweather.disaster.DisasterEvents;
 import com.extremeweather.fire.FireEvents;
 import com.extremeweather.vortex.FunnelShape;
 import com.extremeweather.compat.PMStormBridge;
+import com.extremeweather.ocean.SurgeData;
+import dev.protomanly.pmweather.event.GameBusEvents;
+import dev.protomanly.pmweather.weather.WeatherHandlerServer;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -19,6 +22,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.nullved.pmweatherapi.storm.StormBuilder;
+import net.nullved.pmweatherapi.storm.NearbyStorms;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
@@ -59,7 +63,24 @@ public final class EWCommands {
                 })))
             .then(Commands.literal("disaster").then(Commands.argument("name",StringArgumentType.word())
                 .suggests((c,b)->suggest(b,EFFECTS)).executes(EWCommands::disaster)))
-            .then(Commands.literal("clear").executes(c->{DisasterEvents.get(c.getSource().getLevel()).clearManual();c.getSource().sendSuccess(()->Component.literal("Addon command-spawned vortices cleared (PMWeather storms unaffected)."),true);return 1;})));
+            .then(Commands.literal("status").executes(c->{
+                ServerLevel level=c.getSource().getLevel();
+                int count=NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(c.getSource().getPosition()),4096).size();
+                int fires=FireEvents.active(level);
+                c.getSource().sendSuccess(()->Component.literal("PMWeather storms nearby: "+count+"; tracked wildfire blocks: "+fires),false);
+                return 1;
+            }))
+            .then(Commands.literal("clear").executes(c->{DisasterEvents.get(c.getSource().getLevel()).clearManual();c.getSource().sendSuccess(()->Component.literal("Addon outlines cleared; PMWeather storms unaffected. Use /ew clear all for a complete reset."),true);return 1;})
+                .then(Commands.literal("all").executes(c->{
+                    ServerLevel level=c.getSource().getLevel();
+                    DisasterEvents.get(level).clearManual();
+                    FireEvents.stop(level);
+                    SurgeData.get(level).cleanupAll(level);
+                    var handler=GameBusEvents.MANAGERS.get(level.dimension());
+                    if(handler instanceof WeatherHandlerServer server)server.clearAllStorms();
+                    c.getSource().sendSuccess(()->Component.literal("PMWeather storms and addon weather cleared in this dimension."),true);
+                    return 1;
+                }))));
     }
     private static CompletableFuture<Suggestions> suggest(SuggestionsBuilder builder,String[] values) {
         for(String value:values)if(value.startsWith(builder.getRemainingLowerCase()))builder.suggest(value);

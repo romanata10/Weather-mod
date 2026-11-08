@@ -25,6 +25,6 @@ Install Java 21 and Gradle 8.8, then run `gradle build`. The GitHub Actions work
 * `/ew outline <shape> <ef>` — optional older addon particle silhouette, separated from the native command so it does not pretend to be PMWeather.
 * `/ew disaster <name>` — `hail`, `rainbow`, `sprite`, `ball_lightning`, `superbolt`, `squall`, `dust_devil`, `waterspout`, `landspout`, `snow_whirl`, `fire_whirl`, `hurricane`, `typhoon`, `cyclone`, `meteotsunami`, `tsunami`, `surge`, `flood`, `wildfire`, `forest_fire`. Commands requiring player position must be run by an operator player.
 * `/ew ignite <x> <y> <z>` — operator wildfire ignition at loaded coordinates (also usable from the server console, unlike player-relative disaster effects).
-* `/ew clear` — remove only command-spawned addon funnels; PMWeather's own storms and fire/water still follow their own lifecycles.
+* `/ew status` — count nearby native storms and tracked wildfire blocks. `/ew clear` removes only addon outlines; `/ew clear all` clears native PMWeather storms, active wildfire sources and temporary surge water in the current dimension (operator-only).
 
 **Shape attribution:** The user supplied a tornado-type reference chart. `/ew vortex` now configures an actual PMWeather supercell through public storm fields and PMWeather server sync. Because PMWeather exposes a continuous tornadoShape float, not an enum for every chart label, exact 23 distinct native silhouettes remain unverified. `/ew outline` is the separate procedural preview; no imagery or textures from PMWeather are copied.

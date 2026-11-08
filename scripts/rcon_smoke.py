@@ -74,4 +74,6 @@ with connection as conn:
         raise AssertionError("Wildfire did not replace grass/dirt with a scorched block after 26 seconds")
     check(21, "execute in minecraft:overworld positioned 0 100 0 run ew storm supercell 50", "Spawned PMWeather storm")
     check(22, "execute in minecraft:overworld positioned 0 100 0 run ew vortex rope 1", "Native PMWeather supercell")
+    check(27, "execute in minecraft:overworld positioned 0 100 0 run ew status", "PMWeather storms nearby:")
+    check(28, "ew clear all", "PMWeather storms and addon weather cleared")
 print("PMWeather storm/tornado and scorched-ground integration tests passed")
