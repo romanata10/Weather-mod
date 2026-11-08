@@ -20,12 +20,12 @@ jobs:
       - name: Build JAR
         shell: bash
         run: |
-          gradle build --stacktrace --no-daemon > gradle-build.log 2>&1 || {
-            tail -100 gradle-build.log
+          gradle build --no-daemon > gradle-build.log 2>&1 || {
+            tail -45 gradle-build.log
             while IFS= read -r line; do
               line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
               echo "::error::$line"
-            done < <(tail -100 gradle-build.log)
+            done < <(grep -E "(^> |FAILURE:|What went wrong|error:|Could not|Caused by:|Exception|symbol:|location:|^\*|^Build file|^Execution failed)" gradle-build.log | tail -15)
             exit 1
           }
           tail -30 gradle-build.log
