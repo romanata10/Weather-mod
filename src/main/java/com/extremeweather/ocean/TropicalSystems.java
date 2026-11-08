@@ -16,11 +16,17 @@ import java.util.*;
 public final class TropicalSystems {
     public enum Basin { HURRICANE, TYPHOON, CYCLONE }
     private final List<System> systems=new ArrayList<>();
+    private final List<Pulse> pulses=new ArrayList<>();
     private long ticks;
     public void tick(ServerLevel level) {
         ticks++;
         if(ticks%2000==0 && systems.size()<2)attemptBirth(level);
         if(ticks%10!=0)return;
+        for(Iterator<Pulse> it=pulses.iterator();it.hasNext();) {
+            Pulse wave=it.next();
+            if(++wave.age>95){it.remove();continue;}
+            wave.tick(level);
+        }
         for(Iterator<System> it=systems.iterator();it.hasNext();) {
             System system=it.next();
             if(++system.age>system.life || !level.hasChunkAt(BlockPos.containing(system.center))) {it.remove();continue;}
@@ -30,6 +36,9 @@ public final class TropicalSystems {
             system.center=system.center.add(wind.x*.6,0,wind.z*.6);
             system.render(level,ticks);
             if(ticks%40==0)system.gust(level,wind);
+            // A very rare pressure-driven meteotsunami, not a seismic earthquake.
+            if(system.basin==Basin.CYCLONE && system.age%200==0 && pulses.size()<2 && level.random.nextInt(30)==0)
+                pulses.add(new Pulse(system.center));
         }
     }
     private void attemptBirth(ServerLevel level) {
@@ -43,6 +52,33 @@ public final class TropicalSystems {
             Basin basin=Basin.values()[level.random.nextInt(Basin.values().length)];
             systems.add(new System(storm.position,basin,500+level.random.nextInt(1100)));
             break;
+        }
+    }
+    private static final class Pulse {
+        final Vec3 center;int age;
+        Pulse(Vec3 center){this.center=center;}
+        void tick(ServerLevel level) {
+            double radius=8+age*2.0;
+            for(var player:level.players()) {
+                double distance=Math.hypot(player.getX()-center.x,player.getZ()-center.z);
+                if(Math.abs(distance-radius)>12 || !level.hasChunkAt(player.blockPosition()))continue;
+                if(!level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN) && player.getY()>level.getSeaLevel()+4)continue;
+                double dx=(player.getX()-center.x)/(distance+.01);
+                double dz=(player.getZ()-center.z)/(distance+.01);
+                for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(10))) {
+                    if(entity instanceof net.minecraft.world.entity.player.Player p && p.isCreative())continue;
+                    entity.push(dx*.25,.12,dz*.25);entity.hurtMarked=true;
+                }
+                for(int i=0;i<8;i++) {
+                    double theta=level.random.nextDouble()*Math.PI*2;
+                    int x=(int)Math.floor(player.getX()+Math.cos(theta)*10);
+                    int z=(int)Math.floor(player.getZ()+Math.sin(theta)*10);
+                    BlockPos crest=new BlockPos(x,level.getSeaLevel()+1,z);
+                    if(!level.hasChunkAt(crest) || !level.getFluidState(crest.below()).is(net.minecraft.tags.FluidTags.WATER))continue;
+                    level.sendParticles(ParticleTypes.SPLASH,x+.5,level.getSeaLevel()+.8,z+.5,7,2,.5,2,.15);
+                    if(level.random.nextInt(4)==0)SurgeData.get(level).place(level,crest,100);
+                }
+            }
         }
     }
     private static final class System {
