@@ -4,12 +4,12 @@ Experimental Minecraft **1.20.1 Forge 47.2.0** weather and natural disaster mod.
 
 ## Build / install
 
-1. Install JDK 17 and Gradle 8.x (or generate a Gradle wrapper using `gradle wrapper --gradle-version 8.1.1`).
+1. Install JDK 17 and Gradle 8.1.1 (or generate a Gradle wrapper using `gradle wrapper --gradle-version 8.1.1`).
 2. Run `gradle build` in the project root. ForgeGradle will download Minecraft/Forge dependencies.
-3. Copy `build/libs/extremeweather-1.0.0+mc1.20.1.jar` to the `mods` directory of a 1.20.1 Forge 47.x client and server.
+3. Copy `build/libs/extremeweather-1.0.0+mc1.20.1.jar` (or download the preview JAR from GitHub Releases) to the `mods` directory of **both** a 1.20.1 Forge 47.x client and server.
 4. Use `gradle runClient` or `gradle runServer` in development.
 
-**Note:** This project was assembled in an environment without Java/Gradle and **has not been compiled or play-tested**. Expect to test and possibly fix integration issues before using it on a server. Back up your world: tornadoes can destroy blocks and floods place water.
+**Note:** GitHub Actions successfully compiled the mod on Java 17, but it has **not been play-tested** in a Minecraft client or server. Expect to test and possibly fix integration issues before using it on a server. Back up your world: tornadoes can destroy blocks and floods place water.
 
 ## Implemented simulation
 

@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v5
@@ -34,3 +34,16 @@ jobs:
           name: extremeweather-forge-1.20.1
           path: build/libs/*.jar
           if-no-files-found: error
+      - name: Publish preview JAR to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          JAR=$(find build/libs -maxdepth 1 -name 'extremeweather-*.jar' ! -name '*-sources.jar' | head -1)
+          test -n "$JAR"
+          if gh release view v1.0.0-preview >/dev/null 2>&1; then
+            gh release upload v1.0.0-preview "$JAR" --clobber
+          else
+            gh release create v1.0.0-preview "$JAR" --target "$GITHUB_SHA" --prerelease \
+              --title 'Extreme Weather 1.0.0 Preview (Forge 1.20.1)' \
+              --notes 'Experimental preview. Requires Minecraft 1.20.1 + Forge 47.x. Server and client must both install the same JAR. Back up your world before enabling block destruction or flooding. See README for unfinished features.'
+          fi
