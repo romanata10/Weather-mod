@@ -30,6 +30,19 @@ jobs:
             exit 1
           }
           tail -30 gradle-build.log
+      - name: Inspect PMWeather 0.16.4 extension points
+        shell: bash
+        run: |
+          JAR=$(find "$HOME/.gradle" -type f -name '*pmweather*jar' ! -name '*api*' | head -1)
+          if [ -n "$JAR" ]; then
+            for CLASS in dev.protomanly.pmweather.weather.Storm dev.protomanly.pmweather.weather.Vorticy dev.protomanly.pmweather.weather.storms.StormTypes; do
+              DATA=$(javap -public -classpath "$JAR" "$CLASS" 2>&1 | grep -E '(public|class|static)' | head -75)
+              DATA=${DATA//'%'/'%25'}; DATA=${DATA//$'\n'/'%0A'}
+              echo "::notice::$CLASS%0A$DATA"
+            done
+          else
+            echo '::warning::PMWeather jar not located in Gradle cache'
+          fi
       - name: Dedicated server smoke test
         shell: bash
         run: |
