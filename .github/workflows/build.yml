@@ -1,4 +1,4 @@
-name: Build Forge mod
+name: Build NeoForge PM Addon
 on:
   push:
     branches: ['arena/5774b227-weather-mod']
@@ -30,26 +30,6 @@ jobs:
             exit 1
           }
           tail -30 gradle-build.log
-      - name: Inspect PMWeather 0.16.4 extension points
-        shell: bash
-        run: |
-          JAR=$(find "$HOME/.gradle" -type f \( -iname '*weather*.jar' -o -iname '*protomanly*.jar' \) ! -iname '*api*' | head -1)
-          echo "::notice::PMWeather jar candidate: $JAR"
-          if [ -n "$JAR" ]; then
-            LIST=$(jar tf "$JAR" | grep -E '(Storm|Vorticy)' | head -65 || true)
-            LIST=${LIST//$'\n'/'%0A'}
-            echo "::notice::Weather JAR classes:%0A$LIST"
-            for CLASS in dev.protomanly.pmweather.weather.Storm dev.protomanly.pmweather.weather.Vorticy dev.protomanly.pmweather.weather.storms.StormTypes dev.protomanly.pmweather.weather.WeatherHandlerServer; do
-              DATA=$(javap -public -classpath "$JAR" "$CLASS" 2>&1 | head -65 || true)
-              DATA=${DATA//'%'/'%25'}; DATA=${DATA//$'\n'/'%0A'}
-              echo "::notice::$CLASS%0A$DATA"
-            done
-            DETAILS=$(javap -c -p -classpath "$JAR" dev.protomanly.pmweather.weather.Storm | grep -B5 -A11 'tornadoShape' | tail -125 || true)
-            DETAILS=${DETAILS//'%'/'%25'}; DETAILS=${DETAILS//$'\n'/'%0A'}
-            echo "::notice::Storm.tornadoShape bytecode sites%0A$DETAILS"
-          else
-            echo '::warning::PMWeather jar not located in Gradle cache'
-          fi
       - name: Dedicated server smoke test
         shell: bash
         run: |

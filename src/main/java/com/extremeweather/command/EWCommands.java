@@ -3,6 +3,7 @@ package com.extremeweather.command;
 import com.extremeweather.disaster.DisasterEvents;
 import com.extremeweather.fire.FireEvents;
 import com.extremeweather.vortex.FunnelShape;
+import com.extremeweather.compat.PMStormBridge;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -30,7 +31,7 @@ public final class EWCommands {
     private static final String[] EFFECTS={"hail","rainbow","sprite","ball_lightning","superbolt","squall","dust_devil","waterspout","landspout","snow_whirl","fire_whirl","hurricane","typhoon","cyclone","meteotsunami","tsunami","surge","flood","wildfire","forest_fire"};
     @SubscribeEvent public void register(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("ew").requires(s->s.hasPermission(2))
-            .then(Commands.literal("help").executes(c->{c.getSource().sendSuccess(()->Component.literal("/ew storm <pm_type> [risk 0..100]; /ew vortex <shape> <ef 0..5>; /ew disaster <name>; /ew clear"),false);return 1;}))
+            .then(Commands.literal("help").executes(c->{c.getSource().sendSuccess(()->Component.literal("/ew storm <pm_type> [risk 0..100]; /ew vortex <shape> <ef 0..5> (native PM); /ew outline <shape> <ef> (addon preview); /ew disaster <name>; /ew clear"),false);return 1;}))
             .then(Commands.literal("storm")
                 .then(Commands.argument("type",StringArgumentType.word()).suggests((c,b)->suggest(b,stormNames()))
                     .executes(c->storm(c,50))
@@ -38,6 +39,9 @@ public final class EWCommands {
             .then(Commands.literal("vortex").then(Commands.argument("shape",StringArgumentType.word())
                 .suggests((c,b)->suggest(b,Arrays.stream(FunnelShape.values()).map(v->v.name().toLowerCase(Locale.ROOT)).toArray(String[]::new)))
                 .then(Commands.argument("ef",IntegerArgumentType.integer(0,5)).executes(EWCommands::vortex))))
+            .then(Commands.literal("outline").then(Commands.argument("shape",StringArgumentType.word())
+                .suggests((c,b)->suggest(b,Arrays.stream(FunnelShape.values()).map(v->v.name().toLowerCase(Locale.ROOT)).toArray(String[]::new)))
+                .then(Commands.argument("ef",IntegerArgumentType.integer(0,5)).executes(EWCommands::outline))))
             .then(Commands.literal("disaster").then(Commands.argument("name",StringArgumentType.word())
                 .suggests((c,b)->suggest(b,EFFECTS)).executes(EWCommands::disaster)))
             .then(Commands.literal("clear").executes(c->{DisasterEvents.get(c.getSource().getLevel()).clearManual();c.getSource().sendSuccess(()->Component.literal("Addon command-spawned vortices cleared (PMWeather storms unaffected)."),true);return 1;})));
@@ -66,14 +70,29 @@ public final class EWCommands {
             context.getSource().sendSuccess(()->Component.literal("Spawned PMWeather storm: "+name),true);return 1;
         } catch(RuntimeException e){context.getSource().sendFailure(Component.literal("PMWeather rejected storm: "+e.getMessage()));return 0;}
     }
+    private static FunnelShape requestedShape(CommandContext<CommandSourceStack> context) {
+        return FunnelShape.parse(StringArgumentType.getString(context,"shape"));
+    }
     private static int vortex(CommandContext<CommandSourceStack> context) {
-        String name=StringArgumentType.getString(context,"shape");FunnelShape shape=FunnelShape.parse(name);
+        FunnelShape shape=requestedShape(context);
+        if(shape==null){context.getSource().sendFailure(Component.literal("Unknown shape. Use tab completion."));return 0;}
+        int ef=IntegerArgumentType.getInteger(context,"ef");ServerLevel level=context.getSource().getLevel();
+        try {
+            if(PMStormBridge.nativeFunnel(level,context.getSource().getPosition(),shape,ef)==null){
+                context.getSource().sendFailure(Component.literal("PMWeather cannot spawn here (unloaded chunk or storm limit)."));return 0;
+            }
+        } catch(RuntimeException error){context.getSource().sendFailure(Component.literal("PMWeather spawn failed: "+error.getMessage()));return 0;}
+        context.getSource().sendSuccess(()->Component.literal("Native PMWeather supercell EF"+ef+"; approximate "+shape+" profile. PMWeather controls the actual funnel."),true);
+        return 1;
+    }
+    private static int outline(CommandContext<CommandSourceStack> context) {
+        FunnelShape shape=requestedShape(context);
         if(shape==null){context.getSource().sendFailure(Component.literal("Unknown shape. Use tab completion."));return 0;}
         int ef=IntegerArgumentType.getInteger(context,"ef");ServerLevel level=context.getSource().getLevel();
         if(!DisasterEvents.get(level).summonFunnel(level,context.getSource().getPosition(),shape,ef)){
-            context.getSource().sendFailure(Component.literal("Maximum of four command-spawned vortices per dimension, or chunk not loaded."));return 0;
+            context.getSource().sendFailure(Component.literal("Maximum of four addon outlines per dimension or unloaded chunk."));return 0;
         }
-        context.getSource().sendSuccess(()->Component.literal("Addon funnel "+shape+" EF"+ef+" (particle silhouette, NOT PMWeather renderer)"),true);return 1;
+        context.getSource().sendSuccess(()->Component.literal("Addon particle outline "+shape+" EF"+ef+" (NOT native PMWeather)."),true);return 1;
     }
     private static int disaster(CommandContext<CommandSourceStack> context) {
         String name=StringArgumentType.getString(context,"name");
