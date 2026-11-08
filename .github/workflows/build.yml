@@ -59,6 +59,11 @@ jobs:
               line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
               echo "::error::$line"
             done < <(tail -12 rcon-smoke.log)
+            echo "::error::Server properties: $(find . -name server.properties -print | head -5)"
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::error::$line"
+            done < <(grep -Ei '(RCON|Done \(|Starting Minecraft server|server.properties|EULA|Stopping server|ERROR|WARN)' runserver-smoke.log | tail -14)
             tail -50 runserver-smoke.log
             exit 1
           }
