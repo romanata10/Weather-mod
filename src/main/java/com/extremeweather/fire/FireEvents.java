@@ -8,7 +8,8 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 public final class FireEvents {
-    private final Map<ServerLevel,WildfireManager> managers=new WeakHashMap<>();
+    private static final Map<ServerLevel,WildfireManager> managers=new WeakHashMap<>();
+    public static void ignite(ServerLevel level,net.minecraft.core.BlockPos pos){managers.computeIfAbsent(level,k->new WildfireManager()).ignite(level,pos);}
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
         if(event.getLevel() instanceof ServerLevel level) {
             WildfireManager manager=managers.computeIfAbsent(level,k->new WildfireManager());

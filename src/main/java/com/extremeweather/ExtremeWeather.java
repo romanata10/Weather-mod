@@ -18,5 +18,6 @@ public final class ExtremeWeather {
         NeoForge.EVENT_BUS.register(new FireEvents());
         NeoForge.EVENT_BUS.register(new com.extremeweather.disaster.DisasterEvents());
         NeoForge.EVENT_BUS.register(new PMEvents());
+        NeoForge.EVENT_BUS.register(new com.extremeweather.command.EWCommands());
     }
 }

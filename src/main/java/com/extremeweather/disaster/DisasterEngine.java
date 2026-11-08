@@ -29,12 +29,14 @@ import java.util.*;
 public final class DisasterEngine {
     private final List<Whirl> whirls=new ArrayList<>();
     private final SkyPhenomena sky=new SkyPhenomena();
+    private final com.extremeweather.vortex.ManualVortices manual=new com.extremeweather.vortex.ManualVortices();
     private final com.extremeweather.ocean.TropicalSystems tropical=new com.extremeweather.ocean.TropicalSystems();
     private final Map<UUID,Long> lastStorm=new HashMap<>();
     private long ticks;
 
     public void tick(ServerLevel level) {
         ticks++;
+        manual.tick(level);
         tropical.tick(level);
         if(ticks%20==0)com.extremeweather.ocean.SurgeData.get(level).tick(level);
         if(ticks%2==0)sky.tick(level);
@@ -85,6 +87,34 @@ public final class DisasterEngine {
                 data.place(level,crest,140+level.random.nextInt(100));
                 level.sendParticles(ParticleTypes.SPLASH,x+.5,sea+1,z+.5,10,1,.6,1,.15);
             }
+        }
+    }
+    public boolean summonFunnel(ServerLevel level,Vec3 pos,com.extremeweather.vortex.FunnelShape shape,int ef) {
+        return manual.spawn(level,pos,shape,ef);
+    }
+    public void clearManual(){manual.clear();}
+    public void summonEffect(ServerLevel level,ServerPlayer player,String effect) {
+        switch(effect) {
+            case "hail" -> hail(level,player);
+            case "rainbow" -> sky.rainbow(level,player.position());
+            case "sprite" -> sky.sprite(level,player.blockPosition());
+            case "ball_lightning" -> sky.spawnBall(level,player.position().add(0,4,0));
+            case "superbolt" -> specialLightning(level,player);
+            case "squall" -> gust(level,player,WindEngine.getWind(player.blockPosition(),level));
+            case "dust_devil", "waterspout", "landspout", "snow_whirl" -> {
+                Kind kind=switch(effect) {
+                    case "dust_devil" -> Kind.DUST_DEVIL;
+                    case "waterspout" -> Kind.WATERSPOUT;
+                    case "snow_whirl" -> Kind.SNOW_WHIRL;
+                    default -> Kind.LANDSPOUT;
+                };
+                if(whirls.size()<12)whirls.add(new Whirl(player.position(),kind,360));
+            }
+            case "hurricane" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.HURRICANE);
+            case "typhoon" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.TYPHOON);
+            case "cyclone" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.CYCLONE);
+            case "meteotsunami" -> tropical.spawnPulse(level,player.position());
+            case "surge" -> com.extremeweather.ocean.SurgeData.get(level).place(level,new BlockPos(player.getBlockX(),level.getSeaLevel()+1,player.getBlockZ()),160);
         }
     }
     private void seaEffects(ServerLevel level,ServerPlayer player,Vec3 wind,double speed) {

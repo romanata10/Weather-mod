@@ -18,6 +18,12 @@ public final class TropicalSystems {
     private final List<System> systems=new ArrayList<>();
     private final List<Pulse> pulses=new ArrayList<>();
     private long ticks;
+    public void spawn(ServerLevel level,Vec3 center,Basin basin) {
+        if(systems.size()<2 && level.hasChunkAt(BlockPos.containing(center)))systems.add(new System(center,basin,1200));
+    }
+    public void spawnPulse(ServerLevel level,Vec3 center) {
+        if(pulses.size()<2 && level.hasChunkAt(BlockPos.containing(center)))pulses.add(new Pulse(center));
+    }
     public void tick(ServerLevel level) {
         ticks++;
         if(ticks%2000==0 && systems.size()<2)attemptBirth(level);

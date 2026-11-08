@@ -17,3 +17,12 @@ Full 17-point development plan: [docs/ROADMAP-ru.md](docs/ROADMAP-ru.md).
 ## Build and run
 
 Install Java 21 and Gradle 8.8, then run `gradle build`. The GitHub Actions workflow builds and uploads a preview JAR to Releases after each push. Back up worlds before enabling wildfires. MIT license applies to *this addon only*; PMWeather and PMWeatherAPI retain their own licenses. No code or textures from those projects are redistributed here.
+
+## Operator commands (experimental)
+
+* `/ew storm <pm_type> [risk]` — invoke a **native PMWeather** storm via PMWeatherAPI `StormBuilder`; tab completion lists types exposed by the installed PMWeather version, and risk is 0–100. This does not force a tornado or override PMWeather's native rendering.
+* `/ew vortex <shape> <ef>` — explicitly summon an **addon** funnel with EF 0–5, server-side wind and a capped, particle-based shape silhouette. **These are not native PMWeather tornado render shapes.** Supported shapes: `wire`, `rope`, `needle`, `v_shaped`, `cigar`, `cylinder`, `cone`, `landspout`, `concave_sided`, `straight_sided`, `convex_sided`, `segmented`, `truncated_cone`, `drill_shaped`, `bowl_shaped`, `wedge`, `plume_base`, `hourglass`, `braided`, `looping`, `multi_vortex`, `dead_man_walking`, `el_reno`.
+* `/ew disaster <name>` — `hail`, `rainbow`, `sprite`, `ball_lightning`, `superbolt`, `squall`, `dust_devil`, `waterspout`, `landspout`, `snow_whirl`, `hurricane`, `typhoon`, `cyclone`, `meteotsunami`, `surge`, `wildfire`. Commands requiring player position must be run by an operator player.
+* `/ew clear` — remove only command-spawned addon funnels; PMWeather's own storms and fire/water still follow their own lifecycles.
+
+**Shape attribution:** The user supplied a tornado-type reference chart. Shapes in `/ew vortex` are drawn procedurally and do not copy its image or PMWeather textures. The PMWeather API exposes storm creation and vortex lifecycle events but no documented funnel-renderer shape override. Visual parity with PMWeather is an open task, not an implemented feature.
