@@ -62,7 +62,8 @@ public final class EWCommands {
                     c.getSource().sendSuccess(()->Component.literal(status),false);return 1;
                 })))
             .then(Commands.literal("disaster").then(Commands.argument("name",StringArgumentType.word())
-                .suggests((c,b)->suggest(b,EFFECTS)).executes(EWCommands::disaster)))
+                .suggests((c,b)->suggest(b,EFFECTS)).executes(c->disaster(c,c.getSource().getPosition()))
+                .then(Commands.argument("pos",Vec3Argument.vec3()).executes(c->disaster(c,Vec3Argument.getVec3(c,"pos"))))))
             .then(Commands.literal("status").executes(c->{
                 ServerLevel level=c.getSource().getLevel();
                 int count=NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(c.getSource().getPosition()),4096).size();
@@ -130,14 +131,21 @@ public final class EWCommands {
         }
         context.getSource().sendSuccess(()->Component.literal("Addon particle outline "+shape+" EF"+ef+" (NOT native PMWeather)."),true);return 1;
     }
-    private static int disaster(CommandContext<CommandSourceStack> context) {
+    private static int disaster(CommandContext<CommandSourceStack> context,net.minecraft.world.phys.Vec3 position) {
         String name=StringArgumentType.getString(context,"name");
-        if(Arrays.stream(EFFECTS).noneMatch(name::equals)){context.getSource().sendFailure(Component.literal("Unknown disaster. Use tab completion."));return 0;}
-        try {
-            ServerPlayer player=context.getSource().getPlayerOrException();
-            if(name.equals("wildfire") || name.equals("forest_fire"))FireEvents.ignite(player.serverLevel(),player.blockPosition().below());
-            else DisasterEvents.get(player.serverLevel()).summonEffect(player.serverLevel(),player,name);
-            context.getSource().sendSuccess(()->Component.literal("Triggered "+name),true);return 1;
-        } catch(com.mojang.brigadier.exceptions.CommandSyntaxException e){context.getSource().sendFailure(Component.literal("This command requires an operator player."));return 0;}
+        if(Arrays.stream(EFFECTS).noneMatch(name::equals)){
+            context.getSource().sendFailure(Component.literal("Unknown disaster. Use tab completion."));return 0;
+        }
+        ServerLevel level=context.getSource().getLevel();
+        if(name.equals("wildfire") || name.equals("forest_fire")) {
+            BlockPos ground=BlockPos.containing(position);
+            if(!FireEvents.ignite(level,ground)){
+                context.getSource().sendFailure(Component.literal("Wildfire needs a loaded grass/dirt/tree block. Aim at fuel, not empty air."));return 0;
+            }
+            context.getSource().sendSuccess(()->Component.literal("Wildfire started at "+ground.toShortString()),true);return 1;
+        }
+        var result=DisasterEvents.get(level).trigger(level,position,name);
+        if(!result.started()){context.getSource().sendFailure(Component.literal(result.reason()));return 0;}
+        context.getSource().sendSuccess(()->Component.literal(result.reason()),true);return 1;
     }
 }

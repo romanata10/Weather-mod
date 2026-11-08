@@ -14,7 +14,7 @@ public final class FireEvents {
     public static String status(ServerLevel level,net.minecraft.core.BlockPos pos) {
         return managers.computeIfAbsent(level,k->new WildfireManager()).describe(level,pos);
     }
-    public static void ignite(ServerLevel level,net.minecraft.core.BlockPos pos){managers.computeIfAbsent(level,k->new WildfireManager()).ignite(level,pos);}
+    public static boolean ignite(ServerLevel level,net.minecraft.core.BlockPos pos){return managers.computeIfAbsent(level,k->new WildfireManager()).ignite(level,pos);}
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
         if(event.getLevel() instanceof ServerLevel level) {
             WildfireManager manager=managers.computeIfAbsent(level,k->new WildfireManager());

@@ -46,14 +46,15 @@ public final class WildfireManager {
         return "tracked="+burning.size()+", age="+burning.get(pos)+", tick="+clock+
             ", block="+level.getBlockState(pos)+", fireAbove="+level.getBlockState(pos.above());
     }
-    public void ignite(ServerLevel level, BlockPos position) {
-        if (!level.hasChunkAt(position) || burning.size() >= 384) return;
+    public boolean ignite(ServerLevel level, BlockPos position) {
+        if (!level.hasChunkAt(position) || burning.size() >= 384) return false;
         BlockPos ground = position;
         if (level.getBlockState(ground).isAir()) ground=ground.below();
         BlockState state=level.getBlockState(ground);
-        if (!isFuel(state)) return;
+        if (!isFuel(state)) return false;
         if (burning.putIfAbsent(ground,0)==null && level.getBlockState(ground.above()).isAir())
             level.setBlock(ground.above(),Blocks.FIRE.defaultBlockState(),3);
+        return true;
     }
     private static boolean isFuel(BlockState state) {
         return state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES) || state.is(BlockTags.DIRT) ||
@@ -77,8 +78,14 @@ public final class WildfireManager {
             }
             burning.put(p,age);
             if (age>130 && age%40==0) {
-                for(int sample=0;sample<3;sample++) {
-                    BlockPos n=p.offset(level.random.nextInt(5)-2,level.random.nextInt(3)-1,level.random.nextInt(5)-2);
+                // Adjacent fuels spread deterministically instead of missing every
+                // neighbouring tree with three random probes. Budget remains capped.
+                for(Direction direction:Direction.Plane.HORIZONTAL) {
+                    BlockPos n=p.relative(direction);
+                    if(level.hasChunkAt(n) && isFuel(level.getBlockState(n)) && !burning.containsKey(n))spread.add(n);
+                }
+                for(Direction direction:Direction.Plane.HORIZONTAL) {
+                    BlockPos n=p.relative(direction).above();
                     if(level.hasChunkAt(n) && isFuel(level.getBlockState(n)) && !burning.containsKey(n))spread.add(n);
                 }
             }

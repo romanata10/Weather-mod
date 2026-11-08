@@ -28,6 +28,7 @@ import java.util.*;
  */
 public final class DisasterEngine {
     private final List<Whirl> whirls=new ArrayList<>();
+    private final List<HailField> hailFields=new ArrayList<>();
     private final SkyPhenomena sky=new SkyPhenomena();
     private final com.extremeweather.vortex.ManualVortices manual=new com.extremeweather.vortex.ManualVortices();
     private final com.extremeweather.ocean.TropicalSystems tropical=new com.extremeweather.ocean.TropicalSystems();
@@ -38,6 +39,11 @@ public final class DisasterEngine {
         ticks++;
         manual.tick(level);
         tropical.tick(level);
+        if(ticks%5==0)for(Iterator<HailField> it=hailFields.iterator();it.hasNext();) {
+            HailField field=it.next();
+            if(++field.age>80 || !level.hasChunkAt(BlockPos.containing(field.center)))it.remove();
+            else field.tick(level);
+        }
         if(ticks%20==0)com.extremeweather.ocean.SurgeData.get(level).tick(level);
         if(ticks%2==0)sky.tick(level);
         if(ticks%5==0) {
@@ -93,39 +99,79 @@ public final class DisasterEngine {
         return manual.spawn(level,pos,shape,ef);
     }
     public void clearManual(){manual.clear();}
-    public void summonEffect(ServerLevel level,ServerPlayer player,String effect) {
+    public record EffectResult(boolean started,String reason) {}
+    /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
+    public EffectResult trigger(ServerLevel level,Vec3 position,String effect) {
+        BlockPos pos=BlockPos.containing(position);
+        if(!level.hasChunkAt(pos))return new EffectResult(false,"The target chunk is not loaded");
         switch(effect) {
-            case "hail" -> hail(level,player);
-            case "rainbow" -> sky.rainbow(level,player.position());
-            case "sprite" -> sky.sprite(level,player.blockPosition());
-            case "ball_lightning" -> sky.spawnBall(level,player.position().add(0,4,0));
-            case "superbolt" -> specialLightning(level,player);
-            case "squall" -> gust(level,player,WindEngine.getWind(player.blockPosition(),level));
+            case "hail" -> {
+                if(hailFields.size()>=4)return new EffectResult(false,"Hail limit reached (4 per dimension)");
+                hailFields.add(new HailField(position));
+            }
+            case "rainbow" -> sky.rainbow(level,position);
+            case "sprite" -> sky.sprite(level,pos);
+            case "ball_lightning" -> sky.spawnBall(level,position.add(0,4,0));
+            case "superbolt" -> {
+                LightningBolt bolt=EntityType.LIGHTNING_BOLT.create(level);
+                if(bolt==null)return new EffectResult(false,"Lightning entity creation failed");
+                bolt.moveTo(position.x,position.y,position.z);level.addFreshEntity(bolt);
+                level.sendParticles(ParticleTypes.ELECTRIC_SPARK,position.x,position.y+12,position.z,90,6,12,6,.08);
+            }
+            case "squall" -> {
+                if(com.extremeweather.compat.PMStormBridge.spawn(level,dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL,position,.7f,1)==null)
+                    return new EffectResult(false,"PMWeather cannot start a squall here or storm limit reached");
+            }
             case "dust_devil", "waterspout", "landspout", "snow_whirl" -> {
+                if(whirls.size()>=12)return new EffectResult(false,"Small vortex limit reached (12 per dimension)");
+                if(effect.equals("waterspout") && !level.getFluidState(pos.below()).is(FluidTags.WATER))
+                    return new EffectResult(false,"A waterspout requires water below the target position");
                 Kind kind=switch(effect) {
                     case "dust_devil" -> Kind.DUST_DEVIL;
                     case "waterspout" -> Kind.WATERSPOUT;
                     case "snow_whirl" -> Kind.SNOW_WHIRL;
-                    case "fire_whirl" -> Kind.FIRE_WHIRL;
                     default -> Kind.LANDSPOUT;
                 };
-                if(whirls.size()<12)whirls.add(new Whirl(player.position(),kind,360));
+                whirls.add(new Whirl(position,kind,360));
             }
-            case "hurricane" -> {
-                com.extremeweather.compat.PMStormBridge.cyclone(level,player.position());
-                tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.HURRICANE);
+            case "hurricane", "typhoon", "cyclone" -> {
+                if(com.extremeweather.compat.PMStormBridge.cyclone(level,position)==null)
+                    return new EffectResult(false,"PMWeather cannot start a cyclone here or storm limit reached");
+                var basin=switch(effect) {
+                    case "typhoon" -> com.extremeweather.ocean.TropicalSystems.Basin.TYPHOON;
+                    case "cyclone" -> com.extremeweather.ocean.TropicalSystems.Basin.CYCLONE;
+                    default -> com.extremeweather.ocean.TropicalSystems.Basin.HURRICANE;
+                };
+                tropical.spawn(level,position,basin);
             }
-            case "typhoon" -> {
-                com.extremeweather.compat.PMStormBridge.cyclone(level,player.position());
-                tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.TYPHOON);
+            case "fire_whirl" -> {
+                if(com.extremeweather.compat.PMStormBridge.fireWhirl(level,position)==null)
+                    return new EffectResult(false,"PMWeather cannot start a fire whirl here or storm limit reached");
             }
-            case "cyclone" -> {
-                com.extremeweather.compat.PMStormBridge.cyclone(level,player.position());
-                tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.CYCLONE);
+            case "meteotsunami", "tsunami" -> {
+                if(!level.getBiome(pos).is(BiomeTags.IS_OCEAN))
+                    return new EffectResult(false,"A meteotsunami must start over an ocean biome");
+                if(!tropical.spawnPulse(level,position))return new EffectResult(false,"Wave limit reached or chunk unloaded");
             }
-            case "fire_whirl" -> com.extremeweather.compat.PMStormBridge.fireWhirl(level,player.position());
-            case "meteotsunami", "tsunami" -> tropical.spawnPulse(level,player.position());
-            case "surge", "flood" -> com.extremeweather.ocean.SurgeData.get(level).place(level,new BlockPos(player.getBlockX(),level.getSeaLevel()+1,player.getBlockZ()),160);
+            case "surge", "flood" -> {
+                if(!com.extremeweather.ocean.SurgeData.get(level).place(level,new BlockPos(pos.getX(),level.getSeaLevel()+1,pos.getZ()),200))
+                    return new EffectResult(false,"Flood crest needs empty space above water at sea level");
+            }
+            default -> {return new EffectResult(false,"Unknown disaster");}
+        }
+        return new EffectResult(true,"Started "+effect+" at "+pos.toShortString());
+    }
+    private static final class HailField {
+        final Vec3 center;int age;
+        HailField(Vec3 center){this.center=center;}
+        void tick(ServerLevel level) {
+            level.sendParticles(ParticleTypes.ITEM_SNOWBALL,center.x,center.y+14,center.z,36,13,3,13,.04);
+            if(age%4!=0)return;
+            for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(center,center).inflate(16,6,16))) {
+                if(entity instanceof ServerPlayer player && player.isCreative())continue;
+                if(level.canSeeSky(entity.blockPosition()) && level.random.nextInt(4)==0)
+                    entity.hurt(level.damageSources().generic(),1.0f);
+            }
         }
     }
     private void seaEffects(ServerLevel level,ServerPlayer player,Vec3 wind,double speed) {

@@ -34,13 +34,14 @@ public final class SurgeData extends SavedData {
         }
         tag.put("Surge",list);return tag;
     }
-    public void place(ServerLevel level,BlockPos pos,int duration) {
-        if(placed.size()>=128 || !level.hasChunkAt(pos) || !level.getBlockState(pos).isAir())return;
+    public boolean place(ServerLevel level,BlockPos pos,int duration) {
+        if(placed.size()>=128 || !level.hasChunkAt(pos) || !level.getBlockState(pos).isAir())return false;
         // Only temporary crests above existing water. Never overwrite structures or terrain.
-        if(!level.getFluidState(pos.below()).is(FluidTags.WATER))return;
+        if(!level.getFluidState(pos.below()).is(FluidTags.WATER))return false;
         placed.put(pos,level.getGameTime()+duration);
         level.setBlock(pos,Blocks.WATER.defaultBlockState(),3);
         setDirty();
+        return true;
     }
     public void cleanupAll(ServerLevel level) {
         placed.replaceAll((pos,expiry)->level.getGameTime());

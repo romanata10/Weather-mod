@@ -41,6 +41,9 @@ jobs:
             ASSETS=$(jar tf "$JAR" | grep -Ei '(assets/pmweather/.+(particle|cloud|tornado|storm)|dev/protomanly/pmweather/particle/.+\.class)' | head -110 || true)
             ASSETS=${ASSETS//$'\n'/'%0A'}
             echo "::notice::PMWeather runtime resource names%0A$ASSETS"
+            FIELDS=$(javap -public -classpath "$JAR" dev.protomanly.pmweather.particle.ModParticleTypes 2>&1 | head -85 || true)
+            FIELDS=${FIELDS//$'\n'/'%0A'}
+            echo "::notice::PMWeather particle registry fields%0A$FIELDS"
           fi
       - name: Dedicated server and PMWeather command integration test
         shell: bash
