@@ -58,8 +58,15 @@ with connection as conn:
     send(conn, 12, 2, "setblock 0 71 0 minecraft:air")  # air may already exist
     check(13, "ew ignite 0 70 0", "Wildfire ignition requested")
     # Give the server 10+ seconds to tick 200 simulated fire ticks.
-    time.sleep(14)
-    check(14, "execute if block 0 70 0 extremeweather:charred_grass run say wildfire_passed", "wildfire_passed")
-    check(15, "execute in minecraft:overworld positioned 0 100 0 run ew storm supercell 50", "Spawned PMWeather storm")
-    check(16, "execute in minecraft:overworld positioned 0 100 0 run ew vortex rope 1", "Native PMWeather supercell")
+    time.sleep(26)
+    burned = False
+    for i, block in enumerate(("extremeweather:charred_grass", "extremeweather:scorched_earth", "minecraft:grass_block", "minecraft:dirt", "minecraft:air"), start=14):
+        reply = send(conn, i, 2, f"execute if block 0 70 0 {block} run say wildfire_passed")
+        print(f"block probe {block}: {reply!r}", flush=True)
+        if "wildfire_passed" in reply and block.startswith("extremeweather:"):
+            burned = True
+    if not burned:
+        raise AssertionError("Wildfire did not replace grass/dirt with a scorched block after 26 seconds")
+    check(21, "execute in minecraft:overworld positioned 0 100 0 run ew storm supercell 50", "Spawned PMWeather storm")
+    check(22, "execute in minecraft:overworld positioned 0 100 0 run ew vortex rope 1", "Native PMWeather supercell")
 print("PMWeather storm/tornado and scorched-ground integration tests passed")
