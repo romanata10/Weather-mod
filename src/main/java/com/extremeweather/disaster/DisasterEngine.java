@@ -101,7 +101,7 @@ public final class DisasterEngine {
             case "ball_lightning" -> sky.spawnBall(level,player.position().add(0,4,0));
             case "superbolt" -> specialLightning(level,player);
             case "squall" -> gust(level,player,WindEngine.getWind(player.blockPosition(),level));
-            case "dust_devil", "waterspout", "landspout", "snow_whirl", "fire_whirl" -> {
+            case "dust_devil", "waterspout", "landspout", "snow_whirl" -> {
                 Kind kind=switch(effect) {
                     case "dust_devil" -> Kind.DUST_DEVIL;
                     case "waterspout" -> Kind.WATERSPOUT;
@@ -111,9 +111,19 @@ public final class DisasterEngine {
                 };
                 if(whirls.size()<12)whirls.add(new Whirl(player.position(),kind,360));
             }
-            case "hurricane" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.HURRICANE);
-            case "typhoon" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.TYPHOON);
-            case "cyclone" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.CYCLONE);
+            case "hurricane" -> {
+                com.extremeweather.compat.PMStormBridge.cyclone(level,player.position());
+                tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.HURRICANE);
+            }
+            case "typhoon" -> {
+                com.extremeweather.compat.PMStormBridge.cyclone(level,player.position());
+                tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.TYPHOON);
+            }
+            case "cyclone" -> {
+                com.extremeweather.compat.PMStormBridge.cyclone(level,player.position());
+                tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.CYCLONE);
+            }
+            case "fire_whirl" -> com.extremeweather.compat.PMStormBridge.fireWhirl(level,player.position());
             case "meteotsunami", "tsunami" -> tropical.spawnPulse(level,player.position());
             case "surge", "flood" -> com.extremeweather.ocean.SurgeData.get(level).place(level,new BlockPos(player.getBlockX(),level.getSeaLevel()+1,player.getBlockZ()),160);
         }

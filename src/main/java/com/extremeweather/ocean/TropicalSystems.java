@@ -56,6 +56,9 @@ public final class TropicalSystems {
             if(level.getBiome(origin).value().getBaseTemperature()<.7 || level.random.nextFloat()>.35)continue;
             if(systems.stream().anyMatch(s->s.center.distanceToSqr(storm.position)<350*350))continue;
             Basin basin=Basin.values()[level.random.nextInt(Basin.values().length)];
+            // Add rain bands around PMWeather's native cyclone rather than inventing
+            // a second cloud deck independent of PM's storm engine.
+            if(com.extremeweather.compat.PMStormBridge.cyclone(level,storm.position)==null)continue;
             systems.add(new System(storm.position,basin,500+level.random.nextInt(1100)));
             break;
         }

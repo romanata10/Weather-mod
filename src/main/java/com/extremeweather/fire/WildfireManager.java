@@ -92,6 +92,9 @@ public final class WildfireManager {
         BlockPos center=burning.keySet().iterator().next();
         long nearby=burning.keySet().stream().filter(p->p.distSqr(center)<256).count();
         if(nearby<12)return;
+        // PMWeather's own FIRE_WHIRL handles the actual funnel/cloud styling,
+        // lifetime, damage and multiplayer synchronization.
+        if(clock%400==0)com.extremeweather.compat.PMStormBridge.fireWhirl(level,center.getCenter());
         for(int height=0;height<18;height++) {
             double angle=clock*.11+height*.55;
             double radius=1+height*.12;
