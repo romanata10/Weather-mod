@@ -45,5 +45,9 @@
   "death.attack.extremeweather.tsunami": "%1$s was killed by tsunami",
   "death.attack.extremeweather.ball_lightning": "%1$s was killed by ball lightning",
   "death.attack.extremeweather.hyper_lightning": "%1$s was killed by hyper lightning",
-  "death.attack.extremeweather.dust_storm": "%1$s was killed by dust storm"
+  "death.attack.extremeweather.dust_storm": "%1$s was killed by dust storm",
+  "block.extremeweather.scorched_earth": "Scorched Earth",
+  "block.extremeweather.charred_grass": "Charred Grass",
+  "block.extremeweather.ash": "Ash",
+  "message.extremeweather.storms": "%s storms within radar range"
 }

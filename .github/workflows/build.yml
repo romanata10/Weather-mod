@@ -13,10 +13,10 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.1.1'
+          gradle-version: '8.8'
       - name: Build JAR
         shell: bash
         run: |
@@ -31,7 +31,7 @@ jobs:
           tail -30 gradle-build.log
       - uses: actions/upload-artifact@v4
         with:
-          name: extremeweather-forge-1.20.1
+          name: extremeweather-pm-neoforge-1.21.1
           path: build/libs/*.jar
           if-no-files-found: error
       - name: Publish preview JAR to GitHub Releases
@@ -40,10 +40,10 @@ jobs:
         run: |
           JAR=$(find build/libs -maxdepth 1 -name 'extremeweather-*.jar' ! -name '*-sources.jar' | head -1)
           test -n "$JAR"
-          if gh release view v1.0.0-preview >/dev/null 2>&1; then
-            gh release upload v1.0.0-preview "$JAR" --clobber
+          if gh release view v2.0.0-preview >/dev/null 2>&1; then
+            gh release upload v2.0.0-preview "$JAR" --clobber
           else
-            gh release create v1.0.0-preview "$JAR" --target "$GITHUB_SHA" --prerelease \
-              --title 'Extreme Weather 1.0.0 Preview (Forge 1.20.1)' \
-              --notes 'Experimental preview. Requires Minecraft 1.20.1 + Forge 47.x. Server and client must both install the same JAR. Back up your world before enabling block destruction or flooding. See README for unfinished features.'
+            gh release create v2.0.0-preview "$JAR" --target "$GITHUB_SHA" --prerelease \
+              --title 'Extreme Weather PM Addon 2.0.0 Preview (NeoForge 1.21.1)' \
+              --notes 'Experimental preview. Requires Minecraft 1.21.1 + NeoForge 21.1, PMWeather 0.16.4-alpha, PMWeatherAPI 0.16.4.1 and this addon on both client and server. Back up your world before enabling block destruction or flooding. See README for unfinished features.'
           fi

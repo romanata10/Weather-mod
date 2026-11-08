@@ -1,0 +1,45 @@
+package com.extremeweather.block;
+
+import com.extremeweather.ExtremeWeather;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.nullved.pmweatherapi.storm.NearbyStorms;
+
+public final class EWBlocks {
+    public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(ExtremeWeather.MODID);
+    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ExtremeWeather.MODID);
+    public static final DeferredBlock<Block> SCORCHED_EARTH = BLOCKS.register("scorched_earth", () -> new Block(BlockBehaviour.Properties.of().strength(0.7f)));
+    public static final DeferredBlock<Block> CHARRED_GRASS = BLOCKS.register("charred_grass", () -> new Block(BlockBehaviour.Properties.of().strength(0.5f)));
+    public static final DeferredBlock<Block> ASH = BLOCKS.register("ash", () -> new Block(BlockBehaviour.Properties.of().strength(0.2f)));
+    public static final DeferredBlock<Block> WEATHER_RADAR = BLOCKS.register("weather_radar", () -> new RadarBlock());
+    static {
+        ITEMS.registerSimpleBlockItem(SCORCHED_EARTH);
+        ITEMS.registerSimpleBlockItem(CHARRED_GRASS);
+        ITEMS.registerSimpleBlockItem(ASH);
+        ITEMS.registerSimpleBlockItem(WEATHER_RADAR);
+    }
+    private static class RadarBlock extends Block {
+        RadarBlock() { super(BlockBehaviour.Properties.of().strength(3.0f)); }
+        @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+            if (level instanceof ServerLevel server) {
+                var storms = NearbyStorms.get(server).stormsNearBlock(pos, 512);
+                player.displayClientMessage(storms.isEmpty()
+                    ? Component.translatable("message.extremeweather.clear")
+                    : Component.translatable("message.extremeweather.storms", storms.size()), true);
+            }
+            return InteractionResult.SUCCESS;
+        }
+    }
+    private EWBlocks() {}
+}

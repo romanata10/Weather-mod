@@ -45,5 +45,9 @@
   "death.attack.extremeweather.tsunami": "%1$s погиб(ла) от tsunami",
   "death.attack.extremeweather.ball_lightning": "%1$s погиб(ла) от ball lightning",
   "death.attack.extremeweather.hyper_lightning": "%1$s погиб(ла) от hyper lightning",
-  "death.attack.extremeweather.dust_storm": "%1$s погиб(ла) от dust storm"
+  "death.attack.extremeweather.dust_storm": "%1$s погиб(ла) от dust storm",
+  "block.extremeweather.scorched_earth": "Выжженная земля",
+  "block.extremeweather.charred_grass": "Обугленная трава",
+  "block.extremeweather.ash": "Пепел",
+  "message.extremeweather.storms": "Штормов в зоне радара: %s"
 }
