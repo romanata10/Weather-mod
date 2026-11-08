@@ -5,10 +5,10 @@
 ## Added by this addon
 
 * Server-authoritative wildfire spread from lightning with bounded fire updates, destruction of vegetation and replacement of burned grass/dirt with scorched earth.
-* Dense wildfire smoke plumes and ash; when at least eight nearby fires are active, entities beneath the smoke gradually receive Poison. Rain extinguishes fires. Fire effects are shared by all multiplayer clients.
+* Dense wildfire smoke plumes, fire-whirl particle columns and ash; when at least eight nearby fires are active, entities beneath the smoke gradually receive Poison. Rain extinguishes fires. Fire effects are shared by all multiplayer clients.
 * A radar block that uses PMWeatherAPI `NearbyStorms` to report nearby PMWeather storms; scorched earth, charred grass and ash blocks.
 
-**Not yet implemented:** dedicated tsunami physics, tropical-cyclone extensions, EF shape overrides, multi-vortex special effects, ball lightning, fire whirls, rainbow, dedicated hail, waves, sound design and additional functional blocks. PMWeather itself supplies its own clouds, storms and tornadoes. This is a development preview, **not** a complete version of the 17-feature specification. Do not claim PMWeatherAPI itself provides the missing effects.
+**Not yet implemented:** dedicated tsunami physics, tropical-cyclone extensions, EF shape overrides, multi-vortex special effects, ball lightning, PMWeather-integrated fire vortices, rainbow, dedicated hail, waves, sound design and additional functional blocks. PMWeather itself supplies its own clouds, storms and tornadoes. This is a development preview, **not** a complete version of the 17-feature specification. Do not claim PMWeatherAPI itself provides the missing effects.
 
 ## Build and run
 

@@ -10,7 +10,12 @@ import java.util.WeakHashMap;
 public final class FireEvents {
     private final Map<ServerLevel,WildfireManager> managers=new WeakHashMap<>();
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
-        if(event.getLevel() instanceof ServerLevel level) managers.computeIfAbsent(level,k->new WildfireManager()).tick(level);
+        if(event.getLevel() instanceof ServerLevel level) {
+            WildfireManager manager=managers.computeIfAbsent(level,k->new WildfireManager());
+            if(level.getGameTime()%40==0)
+                for(var player:level.players())manager.seedNearby(level,player.blockPosition());
+            manager.tick(level);
+        }
     }
     @SubscribeEvent public void strike(EntityJoinLevelEvent event) {
         if(event.getLevel() instanceof ServerLevel level && event.getEntity().getType()==EntityType.LIGHTNING_BOLT && level.random.nextFloat()<.4f)

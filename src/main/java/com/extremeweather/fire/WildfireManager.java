@@ -16,6 +16,19 @@ import java.util.*;
 public final class WildfireManager {
     private final Map<BlockPos,Integer> burning = new HashMap<>();
     private int clock;
+    /** Adopt fires started by vanilla, PMWeather or another mod, not just lightning. */
+    public void seedNearby(ServerLevel level, BlockPos center) {
+        if (burning.size() >= 384) return;
+        for(int i=0;i<24;i++) {
+            BlockPos p=center.offset(level.random.nextInt(40)-20,level.random.nextInt(12)-6,level.random.nextInt(40)-20);
+            if(!level.hasChunkAt(p) || !level.getBlockState(p).is(Blocks.FIRE))continue;
+            if(isFuel(level.getBlockState(p.below())))ignite(level,p.below());
+            for(Direction dir:Direction.Plane.HORIZONTAL) {
+                BlockPos n=p.relative(dir);
+                if(isFuel(level.getBlockState(n)))ignite(level,n);
+            }
+        }
+    }
     public void ignite(ServerLevel level, BlockPos position) {
         if (!level.hasChunkAt(position) || burning.size() >= 384) return;
         BlockPos ground = position;
@@ -49,7 +62,7 @@ public final class WildfireManager {
             if(age>200 && (age%90==0 || age>650)) {
                 BlockState old=level.getBlockState(p);
                 if(old.is(Blocks.GRASS_BLOCK) || old.is(BlockTags.DIRT) || old.is(Blocks.MOSS_BLOCK))
-                    level.setBlock(p, EWBlocks.SCORCHED_EARTH.get().defaultBlockState(),3);
+                    level.setBlock(p, (old.is(Blocks.GRASS_BLOCK) ? EWBlocks.CHARRED_GRASS : EWBlocks.SCORCHED_EARTH).get().defaultBlockState(),3);
                 else if(old.is(BlockTags.LEAVES) || old.is(Blocks.SHORT_GRASS) || old.is(Blocks.TALL_GRASS))
                     level.setBlock(p,Blocks.AIR.defaultBlockState(),3);
                 if(age>650) {iter.remove();continue;}
@@ -61,6 +74,20 @@ public final class WildfireManager {
         }
         for(BlockPos p:spread)ignite(level,p);
         if(clock%40==0) smoke(level);
+        if(clock%10==0) fireWhirls(level);
+    }
+    private void fireWhirls(ServerLevel level) {
+        if (burning.size()<18 || level.random.nextInt(14)!=0) return;
+        BlockPos center=burning.keySet().iterator().next();
+        long nearby=burning.keySet().stream().filter(p->p.distSqr(center)<256).count();
+        if(nearby<12)return;
+        for(int height=0;height<18;height++) {
+            double angle=clock*.11+height*.55;
+            double radius=1+height*.12;
+            level.sendParticles(ParticleTypes.FLAME,center.getX()+Math.cos(angle)*radius,center.getY()+height,center.getZ()+Math.sin(angle)*radius,3,.35,.25,.35,.04);
+            if(height%3==0)level.sendParticles(ParticleTypes.LARGE_SMOKE,center.getX(),center.getY()+height,center.getZ(),3,radius,.4,radius,.04);
+        }
+        for(LivingEntity e:level.getEntitiesOfClass(LivingEntity.class,new AABB(center).inflate(4,9,4)))e.setRemainingFireTicks(Math.max(e.getRemainingFireTicks(),60));
     }
     private void smoke(ServerLevel level) {
         if(burning.size()<8)return;
