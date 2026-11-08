@@ -121,7 +121,10 @@ public final class EWCommands {
                 context.getSource().sendFailure(Component.literal("PMWeather cannot spawn here (unloaded chunk or storm limit)."));return 0;
             }
         } catch(RuntimeException error){context.getSource().sendFailure(Component.literal("PMWeather spawn failed: "+error.getMessage()));return 0;}
-        context.getSource().sendSuccess(()->Component.literal("Native PMWeather supercell EF"+ef+"; approximate "+shape+" profile. PMWeather controls the actual funnel."),true);
+        boolean silhouette=DisasterEvents.get(level).summonFunnel(level,context.getSource().getPosition(),shape,ef);
+        context.getSource().sendSuccess(()->Component.literal("Native PMWeather supercell EF"+ef+
+            (silhouette?" with PM-textured addon "+shape+" silhouette (approximate; not a PM renderer shape)"
+                :"; silhouette unavailable (4-outline limit). PMWeather controls the funnel.")),true);
         return 1;
     }
     private static int outline(CommandContext<CommandSourceStack> context) {
