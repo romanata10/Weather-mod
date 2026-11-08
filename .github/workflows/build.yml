@@ -3,6 +3,9 @@ on:
   push:
     branches: ['arena/5774b227-weather-mod']
   workflow_dispatch:
+concurrency:
+  group: weather-preview-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -81,10 +84,10 @@ jobs:
         run: |
           JAR=$(find build/libs -maxdepth 1 -name 'extremeweather-*.jar' ! -name '*-sources.jar' | head -1)
           test -n "$JAR"
-          if gh release view v2.0.0-preview >/dev/null 2>&1; then
-            gh release upload v2.0.0-preview "$JAR" --clobber
+          if gh release view v2.1.0-preview >/dev/null 2>&1; then
+            gh release upload v2.1.0-preview "$JAR" --clobber
           else
-            gh release create v2.0.0-preview "$JAR" --target "$GITHUB_SHA" --prerelease \
-              --title 'Extreme Weather PM Addon 2.0.0 Preview (NeoForge 1.21.1)' \
-              --notes 'Experimental preview. Requires Minecraft 1.21.1 + NeoForge 21.1, PMWeather 0.16.4-alpha, PMWeatherAPI 0.16.4.1 and this addon on both client and server. Back up your world before enabling block destruction or flooding. See README for unfinished features.'
+            gh release create v2.1.0-preview "$JAR" --target "$GITHUB_SHA" --prerelease \
+              --title 'Extreme Weather PM Addon 2.1.0 Preview (NeoForge 1.21.1)' \
+              --notes 'Experimental preview. Requires Minecraft 1.21.1 + NeoForge 21.1, PMWeather 0.16.4-alpha, PMWeatherAPI 0.16.4.1 and this addon on both client and server. Native PMWeather storms/cyclones/fire whirls and server-verified wildfire ground conversion. Client graphics and full 17-feature specification NOT verified. Back up your world; see README for limits.'
           fi

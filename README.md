@@ -1,6 +1,6 @@
 # Extreme Weather — PM Addon (experimental)
 
-**Minecraft 1.21.1 / NeoForge 21.1 / Java 21.** This is an addon for **ProtoManly's Weather 0.16.4-alpha** and **PMWeatherAPI 0.16.4.1 by nullved**. The old standalone Forge 1.20.1 JAR is **not compatible** with this version. Install all three mods on every client and the server. PMWeather owns cloud formation, storm/tornado rendering, wind and weather sync: this addon must not duplicate its weather renderer. See [PMWeather](https://modrinth.com/mod/protomanlys-weather) and [PMWeatherAPI by nullved](https://modrinth.com/mod/pmweatherapi).
+**Minecraft 1.21.1 / NeoForge 21.1 / Java 21.** This is an addon for **ProtoManly's Weather 0.16.4-alpha** and **PMWeatherAPI 0.16.4.1 by nullved**. The old standalone Forge 1.20.1 JAR and the v2.0.0 preview are **not recommended**; use the current v2.1.0 preview with matching dependencies. Install all three mods on every client and the server. PMWeather owns cloud formation, storm/tornado rendering, wind and weather sync: this addon must not duplicate its weather renderer. See [PMWeather](https://modrinth.com/mod/protomanlys-weather) and [PMWeatherAPI by nullved](https://modrinth.com/mod/pmweatherapi).
 
 Full 17-point development plan: [docs/ROADMAP-ru.md](docs/ROADMAP-ru.md).
 
