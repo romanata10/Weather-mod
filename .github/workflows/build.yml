@@ -33,7 +33,8 @@ jobs:
       - name: Inspect PMWeather 0.16.4 extension points
         shell: bash
         run: |
-          JAR=$(find "$HOME/.gradle" -type f -name '*pmweather*jar' ! -name '*api*' | head -1)
+          JAR=$(find "$HOME/.gradle" -type f \( -iname '*weather*.jar' -o -iname '*protomanly*.jar' \) ! -iname '*api*' | head -1)
+          echo "::notice::PMWeather jar candidate: $JAR"
           if [ -n "$JAR" ]; then
             for CLASS in dev.protomanly.pmweather.weather.Storm dev.protomanly.pmweather.weather.Vorticy dev.protomanly.pmweather.weather.storms.StormTypes; do
               DATA=$(javap -public -classpath "$JAR" "$CLASS" 2>&1 | grep -E '(public|class|static)' | head -75)

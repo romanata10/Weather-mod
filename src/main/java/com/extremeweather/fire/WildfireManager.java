@@ -14,19 +14,24 @@ import java.util.*;
 
 /** Budgeted wildfire spread, scorched soil and smoke. All game effects run on the server. */
 public final class WildfireManager {
-    private final Map<BlockPos,Integer> burning = new HashMap<>();
+    private final Map<BlockPos,Integer> burning = new LinkedHashMap<>();
     private int clock;
     /** Adopt fires started by vanilla, PMWeather or another mod, not just lightning. */
     public void seedNearby(ServerLevel level, BlockPos center) {
         if (burning.size() >= 384) return;
-        for(int i=0;i<24;i++) {
-            BlockPos p=center.offset(level.random.nextInt(40)-20,level.random.nextInt(12)-6,level.random.nextInt(40)-20);
-            if(!level.hasChunkAt(p) || !level.getBlockState(p).is(Blocks.FIRE))continue;
+        // Bounded deterministic search: the old 24 random probes over a 40x12x40
+        // volume had almost no chance to find even a visible fire.
+        BlockPos.MutableBlockPos probe=new BlockPos.MutableBlockPos();
+        for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) for(int y=-3;y<=3;y++) {
+            probe.set(center.getX()+x,center.getY()+y,center.getZ()+z);
+            if(!level.hasChunkAt(probe) || !level.getBlockState(probe).is(Blocks.FIRE))continue;
+            BlockPos p=probe.immutable();
             if(isFuel(level.getBlockState(p.below())))ignite(level,p.below());
             for(Direction dir:Direction.Plane.HORIZONTAL) {
                 BlockPos n=p.relative(dir);
                 if(isFuel(level.getBlockState(n)))ignite(level,n);
             }
+            if(burning.size()>=384)return;
         }
     }
     public void ignite(ServerLevel level, BlockPos position) {
@@ -45,16 +50,22 @@ public final class WildfireManager {
     }
     public void tick(ServerLevel level) {
         if (++clock % 10 != 0 || burning.isEmpty()) return;
-        int budget=48;
-        Iterator<Map.Entry<BlockPos,Integer>> iter=burning.entrySet().iterator();
+        List<BlockPos> positions=new ArrayList<>(burning.keySet());
         List<BlockPos> spread=new ArrayList<>();
-        while(iter.hasNext() && budget-->0) {
-            var entry=iter.next(); BlockPos p=entry.getKey();int age=entry.getValue()+10;
-            if (!level.hasChunkAt(p)) {iter.remove();continue;}
-            if (level.isRainingAt(p.above()) || level.getFluidState(p).isSource() || age>700) {iter.remove();continue;}
-            entry.setValue(age);
+        // Rotate through the tracked cells: a busy fire no longer permanently starves
+        // entries beyond the first 48 in the iteration order.
+        int size=positions.size(), start=(int)(((long)clock/10*48)%size);
+        for(int i=0;i<Math.min(48,size);i++) {
+            BlockPos p=positions.get((start+i)%size);
+            Integer previous=burning.get(p);
+            if(previous==null)continue;
+            int age=previous+10;
+            if(!level.hasChunkAt(p) || level.isRainingAt(p.above()) || level.getFluidState(p).isSource() || age>700) {
+                burning.remove(p);continue;
+            }
+            burning.put(p,age);
             if (age>130 && age%40==0) {
-                for(int i=0;i<3;i++) {
+                for(int sample=0;sample<3;sample++) {
                     BlockPos n=p.offset(level.random.nextInt(5)-2,level.random.nextInt(3)-1,level.random.nextInt(5)-2);
                     if(level.hasChunkAt(n) && isFuel(level.getBlockState(n)) && !burning.containsKey(n))spread.add(n);
                 }
@@ -62,10 +73,10 @@ public final class WildfireManager {
             if(age>200 && (age%90==0 || age>650)) {
                 BlockState old=level.getBlockState(p);
                 if(old.is(Blocks.GRASS_BLOCK) || old.is(BlockTags.DIRT) || old.is(Blocks.MOSS_BLOCK))
-                    level.setBlock(p, (old.is(Blocks.GRASS_BLOCK) ? EWBlocks.CHARRED_GRASS : EWBlocks.SCORCHED_EARTH).get().defaultBlockState(),3);
+                    level.setBlock(p,(old.is(Blocks.GRASS_BLOCK)?EWBlocks.CHARRED_GRASS:EWBlocks.SCORCHED_EARTH).get().defaultBlockState(),3);
                 else if(old.is(BlockTags.LEAVES) || old.is(Blocks.SHORT_GRASS) || old.is(Blocks.TALL_GRASS))
                     level.setBlock(p,Blocks.AIR.defaultBlockState(),3);
-                if(age>650) {iter.remove();continue;}
+                if(age>650) {burning.remove(p);continue;}
             }
             if(clock%20==0) {
                 level.sendParticles(ParticleTypes.LARGE_SMOKE,p.getX()+.5,p.getY()+2,p.getZ()+.5,6,1,2,1,.06);
@@ -107,5 +118,4 @@ public final class WildfireManager {
             }
         }
     }
-    public static void onStorm(ServerLevel level,BlockPos pos) { /* PMWeather owns storm formation. */ }
 }
