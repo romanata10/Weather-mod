@@ -28,11 +28,13 @@ import java.util.*;
  */
 public final class DisasterEngine {
     private final List<Whirl> whirls=new ArrayList<>();
+    private final SkyPhenomena sky=new SkyPhenomena();
     private final Map<UUID,Long> lastStorm=new HashMap<>();
     private long ticks;
 
     public void tick(ServerLevel level) {
         ticks++;
+        if(ticks%2==0)sky.tick(level);
         if(ticks%5==0) {
             for(Iterator<Whirl> it=whirls.iterator();it.hasNext();) {
                 Whirl w=it.next();
@@ -55,13 +57,34 @@ public final class DisasterEngine {
                 if(windSpeed>.45 && level.random.nextInt(20)==0)gust(level,player,wind);
                 if(level.random.nextInt(45)==0)tryWhirl(level,player,true);
             } else if(level.random.nextInt(75)==0)tryWhirl(level,player,false);
-            if(level.getFluidState(player.blockPosition()).is(FluidTags.WATER) && windSpeed>.3)
-                player.push(wind.x*.06,Math.sin(ticks*.07+player.getX()*.25)*Math.min(.04,windSpeed*.03),wind.z*.06);
+            if(stormy && level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN))
+                seaEffects(level,player,wind,windSpeed);
             if(!stormy && lastStorm.containsKey(player.getUUID()) && ticks-lastStorm.get(player.getUUID())<1800 && level.isDay() && !level.isRaining())
                 rainbow(level,player);
             if(stormy)lastStorm.put(player.getUUID(),ticks);
         }
         lastStorm.entrySet().removeIf(e->ticks-e.getValue()>1800);
+    }
+    private void seaEffects(ServerLevel level,ServerPlayer player,Vec3 wind,double speed) {
+        if(speed<.25)return;
+        // Weather-driven ocean crests: floating players, mobs and boats are pushed
+        // by the same authoritative PMWeather wind, rather than client-only animation.
+        for(var entity:level.getEntities(null,player.getBoundingBox().inflate(24),e->e.isInWater())) {
+            double phase=ticks*.055+entity.getX()*.31+entity.getZ()*.19;
+            double height=Math.min(.10,speed*.065);
+            entity.push(wind.x*.08,Math.cos(phase)*height,wind.z*.08);
+            entity.hurtMarked=true;
+        }
+        for(int i=0;i<24;i++) {
+            BlockPos pos=player.blockPosition().offset(level.random.nextInt(40)-20,0,level.random.nextInt(40)-20);
+            if(!level.hasChunkAt(pos))continue;
+            BlockPos surface=level.getHeightmapPos(Heightmap.Types.OCEAN_FLOOR,pos);
+            int sea=level.getSeaLevel();
+            if(!level.getFluidState(new BlockPos(pos.getX(),sea-1,pos.getZ())).is(FluidTags.WATER))continue;
+            double phase=ticks*.05+pos.getX()*.22+pos.getZ()*.17;
+            if(Math.sin(phase)>.82)
+                level.sendParticles(ParticleTypes.SPLASH,pos.getX()+.5,sea+.1,pos.getZ()+.5,3,1,.2,1,.03);
+        }
     }
     private void hail(ServerLevel level,ServerPlayer player) {
         if(!level.canSeeSky(player.blockPosition()))return;
@@ -79,13 +102,10 @@ public final class DisasterEngine {
             level.sendParticles(ParticleTypes.ELECTRIC_SPARK,pos.getX(),pos.getY()+12,pos.getZ(),100,5,12,5,.15);
         } else if(level.random.nextInt(4)==0) {
             // Upper-atmosphere red sprite: visual only, no ground damage.
-            level.sendParticles(ParticleTypes.END_ROD,pos.getX(),Math.min(level.getMaxBuildHeight()-18,pos.getY()+110),pos.getZ(),60,12,16,12,.03);
+            if(!level.isDay())sky.sprite(level,pos);
         } else {
             // Rare ball lightning moves through the air and lightly shocks entities.
-            Vec3 center=pos.getCenter().add(0,4,0);
-            level.sendParticles(ParticleTypes.ELECTRIC_SPARK,center.x,center.y,center.z,45,1.5,1.5,1.5,.04);
-            for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos).inflate(3)))
-                entity.hurt(level.damageSources().lightningBolt(),2.0f);
+            sky.spawnBall(level,pos.getCenter().add(0,4,0));
         }
     }
     private void gust(ServerLevel level,ServerPlayer player,Vec3 wind) {
@@ -112,13 +132,7 @@ public final class DisasterEngine {
         whirls.add(new Whirl(pos.getCenter(),kind,300+level.random.nextInt(300)));
     }
     private void rainbow(ServerLevel level,ServerPlayer player) {
-        if(level.random.nextInt(3)!=0)return;
-        for(int i=0;i<7;i++) {
-            double theta=(i+level.random.nextDouble())/7*Math.PI;
-            double x=player.getX()+Math.cos(theta)*32;
-            double y=player.getY()+6+Math.sin(theta)*22-i*.4;
-            level.sendParticles(ParticleTypes.END_ROD,x,y,player.getZ()+45,2,.5,.3,.5,0);
-        }
+        if(level.random.nextInt(12)==0)sky.rainbow(level,player.position());
     }
     private enum Kind { DUST_DEVIL, WATERSPOUT, LANDSPOUT, SNOW_WHIRL }
     private static final class Whirl {
