@@ -69,7 +69,7 @@ public final class DisasterEngine {
         if(speed<.25)return;
         // Weather-driven ocean crests: floating players, mobs and boats are pushed
         // by the same authoritative PMWeather wind, rather than client-only animation.
-        for(var entity:level.getEntities(null,player.getBoundingBox().inflate(24),e->e.isInWater())) {
+        for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(24),e->e.isInWater())) {
             double phase=ticks*.055+entity.getX()*.31+entity.getZ()*.19;
             double height=Math.min(.10,speed*.065);
             entity.push(wind.x*.08,Math.cos(phase)*height,wind.z*.08);
