@@ -24,7 +24,7 @@ public final class EWBlocks {
     public static final DeferredBlock<Block> ASH = BLOCKS.register("ash", () -> new Block(BlockBehaviour.Properties.of().strength(0.2f)));
     public static final DeferredBlock<Block> WEATHER_RADAR = BLOCKS.register("weather_radar", () -> new RadarBlock());
     public static final DeferredBlock<Block> ANEMOMETER = BLOCKS.register("anemometer", () -> new InstrumentBlock("wind"));
-    public static final DeferredBlock<Block> STORM_SIREN = BLOCKS.register("storm_siren", () -> new InstrumentBlock("siren"));
+    public static final DeferredBlock<Block> STORM_SIREN = BLOCKS.register("storm_siren", StormSirenBlock::new);
     public static final DeferredBlock<Block> BAROMETER = BLOCKS.register("barometer", () -> new InstrumentBlock("pressure"));
     static {
         ITEMS.registerSimpleBlockItem(SCORCHED_EARTH);
@@ -56,11 +56,6 @@ public final class EWBlocks {
                     case "wind" -> {
                         double speed=dev.protomanly.pmweather.weather.WindEngine.getWind(pos,server).horizontalDistance();
                         player.displayClientMessage(Component.translatable("message.extremeweather.wind",String.format(java.util.Locale.ROOT,"%.1f",speed)),true);
-                    }
-                    case "siren" -> {
-                        boolean warning=!NearbyStorms.get(server).stormsNearBlock(pos,192).isEmpty();
-                        player.displayClientMessage(Component.translatable(warning?"message.extremeweather.warning":"message.extremeweather.clear"),true);
-                        if(warning)server.playSound(null,pos,net.minecraft.sounds.SoundEvents.BELL_BLOCK,net.minecraft.sounds.SoundSource.BLOCKS,2.0f,0.6f);
                     }
                     case "pressure" -> {
                         int count=NearbyStorms.get(server).stormsNearBlock(pos,256).size();
