@@ -16,6 +16,7 @@ public final class ExtremeWeather {
         EWBlocks.BLOCKS.register(modBus);
         EWBlocks.ITEMS.register(modBus);
         NeoForge.EVENT_BUS.register(new FireEvents());
+        NeoForge.EVENT_BUS.register(new com.extremeweather.disaster.DisasterEvents());
         NeoForge.EVENT_BUS.register(new PMEvents());
     }
 }
