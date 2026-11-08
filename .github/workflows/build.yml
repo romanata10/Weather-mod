@@ -30,6 +30,17 @@ jobs:
             exit 1
           }
           tail -30 gradle-build.log
+      - name: Dedicated server smoke test
+        shell: bash
+        run: |
+          mkdir -p runserver
+          printf 'eula=true\n' > runserver/eula.txt
+          timeout 180s gradle runServer --no-daemon > runserver-smoke.log 2>&1 || true
+          if ! grep -E 'Done \([0-9.]+s\)!|Done \([0-9.]+s\)! For help' runserver-smoke.log; then
+            tail -90 runserver-smoke.log
+            echo '::error::Dedicated server did not reach the ready state'
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: extremeweather-pm-neoforge-1.21.1
