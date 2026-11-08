@@ -18,14 +18,17 @@ def read_exact(sock, count):
 def send(sock, request_id, packet_type, value):
     payload = struct.pack("<ii", request_id, packet_type) + value.encode() + b"\0\0"
     sock.sendall(struct.pack("<i", len(payload)) + payload)
-    size = struct.unpack("<i", read_exact(sock, 4))[0]
-    if size < 10 or size > 65536:
-        raise ValueError("invalid RCON response size")
-    packet = read_exact(sock, size)
-    response_id, response_type = struct.unpack("<ii", packet[:8])
-    if response_id != request_id:
-        raise RuntimeError(f"RCON request rejected: {response_id}")
-    return packet[8:-2].decode(errors="replace")
+    while True:
+        size = struct.unpack("<i", read_exact(sock, 4))[0]
+        if size < 10 or size > 65536:
+            raise ValueError("invalid RCON response size")
+        packet = read_exact(sock, size)
+        response_id, response_type = struct.unpack("<ii", packet[:8])
+        if response_id != request_id:
+            raise RuntimeError(f"RCON request rejected: {response_id}")
+        if packet_type == 3 and response_type != 2:
+            continue  # vanilla may emit an empty response before auth acknowledgement
+        return packet[8:-2].decode(errors="replace")
 
 
 with socket.create_connection(("127.0.0.1", 25575), timeout=12) as conn:
