@@ -51,11 +51,16 @@ jobs:
             echo '::error::Dedicated server did not reach ready state'
             exit 1
           fi
-          python3 scripts/rcon_smoke.py "$RCON_PASSWORD" || {
-            tail -90 runserver-smoke.log
-            echo '::error::PMWeather command integration test failed'
+          python3 scripts/rcon_smoke.py "$RCON_PASSWORD" > rcon-smoke.log 2>&1 || {
+            cat rcon-smoke.log
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::error::$line"
+            done < <(tail -12 rcon-smoke.log)
+            tail -50 runserver-smoke.log
             exit 1
           }
+          cat rcon-smoke.log
       - uses: actions/upload-artifact@v4
         with:
           name: extremeweather-pm-neoforge-1.21.1
