@@ -101,11 +101,12 @@ public final class DisasterEngine {
             case "ball_lightning" -> sky.spawnBall(level,player.position().add(0,4,0));
             case "superbolt" -> specialLightning(level,player);
             case "squall" -> gust(level,player,WindEngine.getWind(player.blockPosition(),level));
-            case "dust_devil", "waterspout", "landspout", "snow_whirl" -> {
+            case "dust_devil", "waterspout", "landspout", "snow_whirl", "fire_whirl" -> {
                 Kind kind=switch(effect) {
                     case "dust_devil" -> Kind.DUST_DEVIL;
                     case "waterspout" -> Kind.WATERSPOUT;
                     case "snow_whirl" -> Kind.SNOW_WHIRL;
+                    case "fire_whirl" -> Kind.FIRE_WHIRL;
                     default -> Kind.LANDSPOUT;
                 };
                 if(whirls.size()<12)whirls.add(new Whirl(player.position(),kind,360));
@@ -113,8 +114,8 @@ public final class DisasterEngine {
             case "hurricane" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.HURRICANE);
             case "typhoon" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.TYPHOON);
             case "cyclone" -> tropical.spawn(level,player.position(),com.extremeweather.ocean.TropicalSystems.Basin.CYCLONE);
-            case "meteotsunami" -> tropical.spawnPulse(level,player.position());
-            case "surge" -> com.extremeweather.ocean.SurgeData.get(level).place(level,new BlockPos(player.getBlockX(),level.getSeaLevel()+1,player.getBlockZ()),160);
+            case "meteotsunami", "tsunami" -> tropical.spawnPulse(level,player.position());
+            case "surge", "flood" -> com.extremeweather.ocean.SurgeData.get(level).place(level,new BlockPos(player.getBlockX(),level.getSeaLevel()+1,player.getBlockZ()),160);
         }
     }
     private void seaEffects(ServerLevel level,ServerPlayer player,Vec3 wind,double speed) {
@@ -186,7 +187,7 @@ public final class DisasterEngine {
     private void rainbow(ServerLevel level,ServerPlayer player) {
         if(level.random.nextInt(12)==0)sky.rainbow(level,player.position());
     }
-    private enum Kind { DUST_DEVIL, WATERSPOUT, LANDSPOUT, SNOW_WHIRL }
+    private enum Kind { DUST_DEVIL, WATERSPOUT, LANDSPOUT, SNOW_WHIRL, FIRE_WHIRL }
     private static final class Whirl {
         Vec3 pos;final Kind kind;final int life;int age;
         Whirl(Vec3 pos,Kind kind,int life){this.pos=pos;this.kind=kind;this.life=life;}
@@ -196,13 +197,14 @@ public final class DisasterEngine {
             for(int i=0;i<14;i++) {
                 double h=level.random.nextDouble()*16,phase=clock*.25+h*.5+i*2.4;
                 double r=.8+h*.1;
-                var particle=kind==Kind.WATERSPOUT?ParticleTypes.SPLASH:kind==Kind.SNOW_WHIRL?ParticleTypes.SNOWFLAKE:ParticleTypes.CLOUD;
+                var particle=kind==Kind.WATERSPOUT?ParticleTypes.SPLASH:kind==Kind.SNOW_WHIRL?ParticleTypes.SNOWFLAKE:kind==Kind.FIRE_WHIRL?ParticleTypes.FLAME:ParticleTypes.CLOUD;
                 level.sendParticles(particle,pos.x+Math.cos(phase)*r,pos.y+h,pos.z+Math.sin(phase)*r,1,0,.1,0,.02);
             }
             if(clock%20==0)for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos,pos.add(0,15,0)).inflate(3))) {
                 if(entity instanceof ServerPlayer player && player.isCreative())continue;
                 double dx=entity.getX()-pos.x,dz=entity.getZ()-pos.z;
                 entity.push(-dz*.035,.12,dx*.035);entity.hurtMarked=true;
+                if(kind==Kind.FIRE_WHIRL)entity.setRemainingFireTicks(Math.max(entity.getRemainingFireTicks(),60));
             }
         }
     }

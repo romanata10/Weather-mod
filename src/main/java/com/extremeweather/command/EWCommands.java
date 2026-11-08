@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 
 /** Operator commands. PMWeather storms are created via the public PMWeatherAPI StormBuilder. */
 public final class EWCommands {
-    private static final String[] EFFECTS={"hail","rainbow","sprite","ball_lightning","superbolt","squall","dust_devil","waterspout","landspout","snow_whirl","hurricane","typhoon","cyclone","meteotsunami","surge","wildfire"};
+    private static final String[] EFFECTS={"hail","rainbow","sprite","ball_lightning","superbolt","squall","dust_devil","waterspout","landspout","snow_whirl","fire_whirl","hurricane","typhoon","cyclone","meteotsunami","tsunami","surge","flood","wildfire","forest_fire"};
     @SubscribeEvent public void register(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("ew").requires(s->s.hasPermission(2))
             .then(Commands.literal("help").executes(c->{c.getSource().sendSuccess(()->Component.literal("/ew storm <pm_type> [risk 0..100]; /ew vortex <shape> <ef 0..5>; /ew disaster <name>; /ew clear"),false);return 1;}))
@@ -80,7 +80,7 @@ public final class EWCommands {
         if(Arrays.stream(EFFECTS).noneMatch(name::equals)){context.getSource().sendFailure(Component.literal("Unknown disaster. Use tab completion."));return 0;}
         try {
             ServerPlayer player=context.getSource().getPlayerOrException();
-            if(name.equals("wildfire"))FireEvents.ignite(player.serverLevel(),player.blockPosition().below());
+            if(name.equals("wildfire") || name.equals("forest_fire"))FireEvents.ignite(player.serverLevel(),player.blockPosition().below());
             else DisasterEvents.get(player.serverLevel()).summonEffect(player.serverLevel(),player,name);
             context.getSource().sendSuccess(()->Component.literal("Triggered "+name),true);return 1;
         } catch(com.mojang.brigadier.exceptions.CommandSyntaxException e){context.getSource().sendFailure(Component.literal("This command requires an operator player."));return 0;}
