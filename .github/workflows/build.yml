@@ -37,7 +37,7 @@ jobs:
           RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > runserver/eula.txt
           printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\n' "$RCON_PASSWORD" > runserver/server.properties
-          timeout 180s gradle runServer --no-daemon > runserver-smoke.log 2>&1 &
+          tail -f /dev/null | timeout 180s gradle runServer --no-daemon > runserver-smoke.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           READY=0
@@ -51,6 +51,8 @@ jobs:
             echo '::error::Dedicated server did not reach ready state'
             exit 1
           fi
+          echo "Server configs: $(find . -name server.properties -print | head -5)"
+          grep -Ei '(RCON|Done \(|Starting Minecraft server)' runserver-smoke.log | tail -12 || true
           python3 scripts/rcon_smoke.py "$RCON_PASSWORD" > rcon-smoke.log 2>&1 || {
             cat rcon-smoke.log
             while IFS= read -r line; do

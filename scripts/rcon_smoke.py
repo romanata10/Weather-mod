@@ -3,6 +3,7 @@
 import socket
 import struct
 import sys
+import time
 
 
 def read_exact(sock, count):
@@ -31,7 +32,17 @@ def send(sock, request_id, packet_type, value):
         return packet[8:-2].decode(errors="replace")
 
 
-with socket.create_connection(("127.0.0.1", 25575), timeout=12) as conn:
+connection = None
+for _ in range(20):
+    try:
+        connection = socket.create_connection(("127.0.0.1", 25575), timeout=2)
+        break
+    except OSError:
+        time.sleep(1)
+if connection is None:
+    raise ConnectionError("RCON port 25575 never opened; check the dedicated server log")
+
+with connection as conn:
     conn.settimeout(12)
     send(conn, 7, 3, sys.argv[1])
     for index, (command, expected) in enumerate(
