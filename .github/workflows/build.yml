@@ -37,7 +37,7 @@ jobs:
           RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > eula.txt
           printf 'eula=true\n' > runserver/eula.txt
-          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\n' "$RCON_PASSWORD" > server.properties
+          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\n' "$RCON_PASSWORD" > runserver/server.properties
           tail -f /dev/null | timeout 180s gradle runServer --no-daemon > runserver-smoke.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
@@ -53,7 +53,7 @@ jobs:
             exit 1
           fi
           echo "Server configs: $(find . -name server.properties -print | head -5)"
-          grep -Ei '(RCON|Done \(|Starting Minecraft server)' runserver-smoke.log | tail -12 || true
+          grep -Ei '(RCON|Done \(|Starting Minecraft server|Preparing level|EULA)' runserver-smoke.log | tail -12 || true
           python3 scripts/rcon_smoke.py "$RCON_PASSWORD" > rcon-smoke.log 2>&1 || {
             cat rcon-smoke.log
             while IFS= read -r line; do
@@ -61,6 +61,7 @@ jobs:
               echo "::error::$line"
             done < <(tail -12 rcon-smoke.log)
             echo "::error::Server properties: $(find . -name server.properties -print | head -5)"
+            echo "::error::Ready marker: $(grep -n 'Done (' runserver-smoke.log | tail -2)"
             while IFS= read -r line; do
               line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
               echo "::error::$line"

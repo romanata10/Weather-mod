@@ -15,7 +15,7 @@ neoForge {
     version = neo_version
     runs {
         client { client() }
-        server { server(); programArgument '--nogui' }
+        server { server(); programArgument '--nogui'; gameDirectory = project.file('runserver') }
     }
     mods { extremeweather { sourceSet(sourceSets.main) } }
 }
