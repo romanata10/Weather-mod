@@ -34,7 +34,7 @@ public final class ManualVortices {
     private static void sendVisible(ServerLevel level,Vec3 origin,ParticleOptions particle,
                                     double x,double y,double z,int count,double dx,double dy,double dz,double speed) {
         for(ServerPlayer viewer:level.players())if(viewer.position().distanceToSqr(origin)<256*256)
-            level.sendParticles(viewer,true,particle,x,y,z,count,dx,dy,dz,speed);
+            level.sendParticles(viewer,particle,true,x,y,z,count,dx,dy,dz,speed);
     }
     private static final class Funnel {
         Vec3 pos;final FunnelShape shape;final int ef;int age;final int life;

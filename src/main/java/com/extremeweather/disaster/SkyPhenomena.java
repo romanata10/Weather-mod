@@ -58,7 +58,7 @@ public final class SkyPhenomena {
     private static void broadcastSky(ServerLevel level,Vec3 origin,ParticleOptions particle,
                                      double x,double y,double z,int count,double dx,double dy,double dz,double speed) {
         for(ServerPlayer player:level.players())if(player.position().distanceToSqr(origin)<256*256)
-            level.sendParticles(player,true,particle,x,y,z,count,dx,dy,dz,speed);
+            level.sendParticles(player,particle,true,x,y,z,count,dx,dy,dz,speed);
     }
 
     public void spawnBall(ServerLevel level, Vec3 position) {
