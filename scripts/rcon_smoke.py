@@ -57,13 +57,18 @@ with connection as conn:
     check(11, "setblock 0 70 0 minecraft:grass_block", "Changed")
     send(conn, 12, 2, "setblock 0 71 0 minecraft:air")  # air may already exist
     check(13, "ew ignite 0 70 0", "Wildfire ignition requested")
-    # Give the server 10+ seconds to tick 200 simulated fire ticks.
+    print("fire status after ignition:",send(conn, 23, 2, "ew firestatus 0 70 0"),flush=True)
+    start_time = send(conn, 24, 2, "time query gametime")
+    print("start time:",start_time,flush=True)
+    # Give the server enough time for multiple fire spread and conversion passes.
     time.sleep(26)
+    print("fire status after 26s:",send(conn, 25, 2, "ew firestatus 0 70 0"),flush=True)
+    print("end time:",send(conn, 26, 2, "time query gametime"),flush=True)
     burned = False
     for i, block in enumerate(("extremeweather:charred_grass", "extremeweather:scorched_earth", "minecraft:grass_block", "minecraft:dirt", "minecraft:air"), start=14):
-        reply = send(conn, i, 2, f"execute if block 0 70 0 {block} run say wildfire_passed")
+        reply = send(conn, i, 2, f"execute if block 0 70 0 {block}")
         print(f"block probe {block}: {reply!r}", flush=True)
-        if "wildfire_passed" in reply and block.startswith("extremeweather:"):
+        if "passed" in reply.lower() and block.startswith("extremeweather:"):
             burned = True
     if not burned:
         raise AssertionError("Wildfire did not replace grass/dirt with a scorched block after 26 seconds")

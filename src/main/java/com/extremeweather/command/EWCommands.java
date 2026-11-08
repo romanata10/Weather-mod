@@ -51,6 +51,12 @@ public final class EWCommands {
                     c.getSource().sendSuccess(()->Component.literal("Wildfire ignition requested at "+pos.toShortString()),true);
                     return 1;
                 })))
+            .then(Commands.literal("firestatus").then(Commands.argument("pos",Vec3Argument.vec3())
+                .executes(c->{
+                    BlockPos pos=BlockPos.containing(Vec3Argument.getVec3(c,"pos"));
+                    String status=FireEvents.status(c.getSource().getLevel(),pos);
+                    c.getSource().sendSuccess(()->Component.literal(status),false);return 1;
+                })))
             .then(Commands.literal("disaster").then(Commands.argument("name",StringArgumentType.word())
                 .suggests((c,b)->suggest(b,EFFECTS)).executes(EWCommands::disaster)))
             .then(Commands.literal("clear").executes(c->{DisasterEvents.get(c.getSource().getLevel()).clearManual();c.getSource().sendSuccess(()->Component.literal("Addon command-spawned vortices cleared (PMWeather storms unaffected)."),true);return 1;})));

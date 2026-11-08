@@ -34,6 +34,10 @@ public final class WildfireManager {
             if(burning.size()>=384)return;
         }
     }
+    public String describe(ServerLevel level,BlockPos pos) {
+        return "tracked="+burning.size()+", age="+burning.get(pos)+", tick="+clock+
+            ", block="+level.getBlockState(pos)+", fireAbove="+level.getBlockState(pos.above());
+    }
     public void ignite(ServerLevel level, BlockPos position) {
         if (!level.hasChunkAt(position) || burning.size() >= 384) return;
         BlockPos ground = position;
