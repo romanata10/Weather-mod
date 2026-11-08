@@ -30,17 +30,32 @@ jobs:
             exit 1
           }
           tail -30 gradle-build.log
-      - name: Dedicated server smoke test
+      - name: Dedicated server and PMWeather command integration test
         shell: bash
         run: |
           mkdir -p runserver
+          RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > runserver/eula.txt
-          timeout 180s gradle runServer --no-daemon > runserver-smoke.log 2>&1 || true
-          if ! grep -E 'Done \([0-9.]+s\)!|Done \([0-9.]+s\)! For help' runserver-smoke.log; then
+          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\n' "$RCON_PASSWORD" > runserver/server.properties
+          timeout 180s gradle runServer --no-daemon > runserver-smoke.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for attempt in $(seq 1 150); do
+            if grep -Eq 'Done \([0-9.]+s\)!' runserver-smoke.log; then READY=1; break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
             tail -90 runserver-smoke.log
-            echo '::error::Dedicated server did not reach the ready state'
+            echo '::error::Dedicated server did not reach ready state'
             exit 1
           fi
+          python3 scripts/rcon_smoke.py "$RCON_PASSWORD" || {
+            tail -90 runserver-smoke.log
+            echo '::error::PMWeather command integration test failed'
+            exit 1
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: extremeweather-pm-neoforge-1.21.1
