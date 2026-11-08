@@ -33,6 +33,15 @@ jobs:
             exit 1
           }
           tail -30 gradle-build.log
+      - name: Inspect PMWeather particle resource names
+        shell: bash
+        run: |
+          JAR=$(find "$HOME/.gradle" -type f -name 'protomanlys-weather-*.jar' | head -1)
+          if [ -n "$JAR" ]; then
+            ASSETS=$(jar tf "$JAR" | grep -Ei '(assets/pmweather/.+(particle|cloud|tornado|storm)|dev/protomanly/pmweather/particle/.+\.class)' | head -110 || true)
+            ASSETS=${ASSETS//$'\n'/'%0A'}
+            echo "::notice::PMWeather runtime resource names%0A$ASSETS"
+          fi
       - name: Dedicated server and PMWeather command integration test
         shell: bash
         run: |
