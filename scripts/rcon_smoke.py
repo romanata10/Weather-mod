@@ -56,7 +56,7 @@ with connection as conn:
     check(10, "weather clear", "clear")
     check(11, "setblock 0 70 0 minecraft:grass_block", "Changed")
     send(conn, 12, 2, "setblock 0 71 0 minecraft:air")  # air may already exist
-    check(13, "ew ignite 0 70 0", "Wildfire ignition requested")
+    check(13, "ew ignite 0 70 0", "Wildfire started")
     print("fire status after ignition:",send(conn, 23, 2, "ew firestatus 0 70 0"),flush=True)
     start_time = send(conn, 24, 2, "time query gametime")
     print("start time:",start_time,flush=True)
