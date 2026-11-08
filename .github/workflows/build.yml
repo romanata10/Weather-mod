@@ -44,7 +44,7 @@ jobs:
               DATA=${DATA//'%'/'%25'}; DATA=${DATA//$'\n'/'%0A'}
               echo "::notice::$CLASS%0A$DATA"
             done
-            DETAILS=$(javap -c -p -classpath "$JAR" dev.protomanly.pmweather.weather.Storm | grep -B12 -A18 -m 8 'tornadoShape' | head -150 || true)
+            DETAILS=$(javap -c -p -classpath "$JAR" dev.protomanly.pmweather.weather.Storm | grep -B5 -A11 'tornadoShape' | tail -125 || true)
             DETAILS=${DETAILS//'%'/'%25'}; DETAILS=${DETAILS//$'\n'/'%0A'}
             echo "::notice::Storm.tornadoShape bytecode sites%0A$DETAILS"
           else
