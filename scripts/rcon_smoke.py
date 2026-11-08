@@ -45,16 +45,21 @@ if connection is None:
 with connection as conn:
     conn.settimeout(12)
     send(conn, 7, 3, sys.argv[1])
-    for index, (command, expected) in enumerate(
-        [
-            ("ew help", "/ew storm"),
-            ("forceload add 0 0", "force"),
-            ("execute in minecraft:overworld positioned 0 100 0 run ew storm supercell 50", "Spawned PMWeather storm"),
-            ("execute in minecraft:overworld positioned 0 100 0 run ew vortex rope 1", "Native PMWeather supercell"),
-        ], start=8
-    ):
+    def check(index, command, expected):
         reply = send(conn, index, 2, command)
-        print(f"{command}: {reply}")
+        print(f"{command}: {reply}", flush=True)
         if expected.lower() not in reply.lower():
             raise AssertionError(f"expected {expected!r} in RCON reply {reply!r}")
-print("PMWeather integration command smoke tests passed")
+
+    check(8, "ew help", "/ew storm")
+    check(9, "forceload add 0 0", "force")
+    check(10, "weather clear", "clear")
+    check(11, "setblock 0 70 0 minecraft:grass_block", "Changed")
+    check(12, "setblock 0 71 0 minecraft:air", "Changed")
+    check(13, "ew ignite 0 70 0", "Wildfire ignition requested")
+    # Give the server 10+ seconds to tick 200 simulated fire ticks.
+    time.sleep(14)
+    check(14, "execute if block 0 70 0 extremeweather:charred_grass run say wildfire_passed", "wildfire_passed")
+    check(15, "execute in minecraft:overworld positioned 0 100 0 run ew storm supercell 50", "Spawned PMWeather storm")
+    check(16, "execute in minecraft:overworld positioned 0 100 0 run ew vortex rope 1", "Native PMWeather supercell")
+print("PMWeather storm/tornado and scorched-ground integration tests passed")

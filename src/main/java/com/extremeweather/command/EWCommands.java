@@ -13,6 +13,8 @@ import dev.protomanly.pmweather.weather.storms.StormType;
 import dev.protomanly.pmweather.weather.storms.StormTypes;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.coordinates.Vec3Argument;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -42,6 +44,13 @@ public final class EWCommands {
             .then(Commands.literal("outline").then(Commands.argument("shape",StringArgumentType.word())
                 .suggests((c,b)->suggest(b,Arrays.stream(FunnelShape.values()).map(v->v.name().toLowerCase(Locale.ROOT)).toArray(String[]::new)))
                 .then(Commands.argument("ef",IntegerArgumentType.integer(0,5)).executes(EWCommands::outline))))
+            .then(Commands.literal("ignite").then(Commands.argument("pos",Vec3Argument.vec3())
+                .executes(c->{
+                    BlockPos pos=BlockPos.containing(Vec3Argument.getVec3(c,"pos"));
+                    FireEvents.ignite(c.getSource().getLevel(),pos);
+                    c.getSource().sendSuccess(()->Component.literal("Wildfire ignition requested at "+pos.toShortString()),true);
+                    return 1;
+                })))
             .then(Commands.literal("disaster").then(Commands.argument("name",StringArgumentType.word())
                 .suggests((c,b)->suggest(b,EFFECTS)).executes(EWCommands::disaster)))
             .then(Commands.literal("clear").executes(c->{DisasterEvents.get(c.getSource().getLevel()).clearManual();c.getSource().sendSuccess(()->Component.literal("Addon command-spawned vortices cleared (PMWeather storms unaffected)."),true);return 1;})));
