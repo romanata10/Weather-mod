@@ -29,11 +29,13 @@ import java.util.*;
 public final class DisasterEngine {
     private final List<Whirl> whirls=new ArrayList<>();
     private final SkyPhenomena sky=new SkyPhenomena();
+    private final com.extremeweather.ocean.TropicalSystems tropical=new com.extremeweather.ocean.TropicalSystems();
     private final Map<UUID,Long> lastStorm=new HashMap<>();
     private long ticks;
 
     public void tick(ServerLevel level) {
         ticks++;
+        tropical.tick(level);
         if(ticks%20==0)com.extremeweather.ocean.SurgeData.get(level).tick(level);
         if(ticks%2==0)sky.tick(level);
         if(ticks%5==0) {
