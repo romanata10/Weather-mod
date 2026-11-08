@@ -34,6 +34,7 @@ public final class DisasterEngine {
 
     public void tick(ServerLevel level) {
         ticks++;
+        if(ticks%20==0)com.extremeweather.ocean.SurgeData.get(level).tick(level);
         if(ticks%2==0)sky.tick(level);
         if(ticks%5==0) {
             for(Iterator<Whirl> it=whirls.iterator();it.hasNext();) {
@@ -57,13 +58,32 @@ public final class DisasterEngine {
                 if(windSpeed>.45 && level.random.nextInt(20)==0)gust(level,player,wind);
                 if(level.random.nextInt(45)==0)tryWhirl(level,player,true);
             } else if(level.random.nextInt(75)==0)tryWhirl(level,player,false);
-            if(stormy && level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN))
+            if(stormy && level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN)) {
                 seaEffects(level,player,wind,windSpeed);
+                if(windSpeed>.8 && level.random.nextInt(12)==0)stormSurge(level,player,wind);
+            }
             if(!stormy && lastStorm.containsKey(player.getUUID()) && ticks-lastStorm.get(player.getUUID())<1800 && level.isDay() && !level.isRaining())
                 rainbow(level,player);
             if(stormy)lastStorm.put(player.getUUID(),ticks);
         }
         lastStorm.entrySet().removeIf(e->ticks-e.getValue()>1800);
+    }
+    private void stormSurge(ServerLevel level,ServerPlayer player,Vec3 wind) {
+        // Shallow storm surge follows the PMWeather wind direction. Source blocks
+        // are saved and removed when the crest recedes, including after a restart.
+        int sea=level.getSeaLevel();
+        var data=com.extremeweather.ocean.SurgeData.get(level);
+        for(int i=0;i<5;i++) {
+            int x=player.getBlockX()+level.random.nextInt(30)-15;
+            int z=player.getBlockZ()+level.random.nextInt(30)-15;
+            BlockPos base=new BlockPos(x,sea,z);
+            if(!level.hasChunkAt(base) || !level.getBiome(base).is(BiomeTags.IS_OCEAN))continue;
+            BlockPos crest=base.above();
+            if(level.getFluidState(base).is(FluidTags.WATER)) {
+                data.place(level,crest,140+level.random.nextInt(100));
+                level.sendParticles(ParticleTypes.SPLASH,x+.5,sea+1,z+.5,10,1,.6,1,.15);
+            }
+        }
     }
     private void seaEffects(ServerLevel level,ServerPlayer player,Vec3 wind,double speed) {
         if(speed<.25)return;
