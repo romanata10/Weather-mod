@@ -1,6 +1,12 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/cube",
   "textures": {
-    "all": "extremeweather:block/anemometer"
+    "particle": "extremeweather:block/anemometer_side",
+    "up": "extremeweather:block/anemometer_top",
+    "down": "extremeweather:block/anemometer_bottom",
+    "north": "extremeweather:block/anemometer_side",
+    "south": "extremeweather:block/anemometer_side",
+    "west": "extremeweather:block/anemometer_side",
+    "east": "extremeweather:block/anemometer_side"
   }
 }
