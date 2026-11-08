@@ -4,6 +4,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -31,7 +33,7 @@ public final class SkyPhenomena {
                 double angle=Math.toRadians(degree);
                 double x=origin.x+Math.cos(angle)*radius;
                 double y=origin.y+5+Math.sin(angle)*radius;
-                level.sendParticles(dust,x,y,origin.z+60,1,0,0,0,0);
+                broadcastSky(level,origin,dust,x,y,origin.z+60,1,0,0,0,0);
             }
         }
     }
@@ -45,15 +47,25 @@ public final class SkyPhenomena {
             var glow=new DustParticleOptions(branch%3==0?new Vector3f(1f,.32f,.23f):new Vector3f(.75f,.08f,.24f),1.5f);
             for(int i=0;i<11;i++) {
                 double y=baseY+25-i*3;
-                level.sendParticles(glow,x+Math.sin(i*.8+branch)*i*.2,y,z,1,.1,.2,.1,0);
+                broadcastSky(level,Vec3.atCenterOf(origin),glow,x+Math.sin(i*.8+branch)*i*.2,y,z,1,.1,.2,.1,0);
             }
         }
-        level.sendParticles(ParticleTypes.END_ROD,origin.getX(),baseY+25,origin.getZ(),20,8,3,8,.01);
+        broadcastSky(level,Vec3.atCenterOf(origin),ParticleTypes.END_ROD,origin.getX(),baseY+25,origin.getZ(),20,8,3,8,.01);
+    }
+
+    /** Normal server particle delivery culls after 32 blocks; bows and sprites
+     * are 60–110 blocks away from the player, so request long-distance delivery. */
+    private static void broadcastSky(ServerLevel level,Vec3 origin,ParticleOptions particle,
+                                     double x,double y,double z,int count,double dx,double dy,double dz,double speed) {
+        for(ServerPlayer player:level.players())if(player.position().distanceToSqr(origin)<256*256)
+            level.sendParticles(player,true,particle,x,y,z,count,dx,dy,dz,speed);
     }
 
     public void spawnBall(ServerLevel level, Vec3 position) {
         if(balls.size()<8)balls.add(new Ball(position,level.random.nextDouble()*Math.PI*2));
     }
+    public void clear(){balls.clear();}
+    public boolean canSpawnBall(){return balls.size()<8;}
     public void tick(ServerLevel level) {
         Iterator<Ball> it=balls.iterator();
         while(it.hasNext()) {

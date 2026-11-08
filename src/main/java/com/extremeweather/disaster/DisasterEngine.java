@@ -101,6 +101,7 @@ public final class DisasterEngine {
         return manual.spawn(level,pos,shape,ef);
     }
     public void clearManual(){manual.clear();}
+    public void clearAll(){manual.clear();whirls.clear();hailFields.clear();sky.clear();tropical.clear();lastStorm.clear();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
     public EffectResult trigger(ServerLevel level,Vec3 position,String effect) {
@@ -113,7 +114,10 @@ public final class DisasterEngine {
             }
             case "rainbow" -> sky.rainbow(level,position);
             case "sprite" -> sky.sprite(level,pos);
-            case "ball_lightning" -> sky.spawnBall(level,position.add(0,4,0));
+            case "ball_lightning" -> {
+                if(!sky.canSpawnBall())return new EffectResult(false,"Ball lightning limit reached (8 per dimension)");
+                sky.spawnBall(level,position.add(0,4,0));
+            }
             case "superbolt" -> {
                 LightningBolt bolt=EntityType.LIGHTNING_BOLT.create(level);
                 if(bolt==null)return new EffectResult(false,"Lightning entity creation failed");

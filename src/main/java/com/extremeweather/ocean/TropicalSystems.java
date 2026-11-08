@@ -27,6 +27,7 @@ public final class TropicalSystems {
         if(pulses.size()>=2 || !level.hasChunkAt(BlockPos.containing(center)))return false;
         pulses.add(new Pulse(center));return true;
     }
+    public void clear(){systems.clear();pulses.clear();}
     public void tick(ServerLevel level) {
         ticks++;
         if(ticks%2000==0 && systems.size()<2)attemptBirth(level);

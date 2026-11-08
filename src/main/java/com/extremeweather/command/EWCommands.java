@@ -37,7 +37,7 @@ public final class EWCommands {
     private static final String[] EFFECTS={"hail","rainbow","sprite","ball_lightning","superbolt","squall","dust_devil","waterspout","landspout","snow_whirl","fire_whirl","hurricane","typhoon","cyclone","meteotsunami","tsunami","surge","flood","wildfire","forest_fire"};
     @SubscribeEvent public void register(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("ew").requires(s->s.hasPermission(2))
-            .then(Commands.literal("help").executes(c->{c.getSource().sendSuccess(()->Component.literal("/ew storm <pm_type> [risk 0..100]; /ew vortex <shape> <ef 0..5> (native PM); /ew outline <shape> <ef> (addon preview); /ew disaster <name>; /ew clear"),false);return 1;}))
+            .then(Commands.literal("help").executes(c->{c.getSource().sendSuccess(()->Component.literal("/ew storm <pm_type> [risk 0..100]; /ew vortex <shape> <ef 0..5> (native PM); /ew outline <shape> <ef> (addon preview); /ew disaster <name> [x y z]; /ew clear"),false);return 1;}))
             .then(Commands.literal("storm")
                 .then(Commands.argument("type",StringArgumentType.word()).suggests((c,b)->suggest(b,stormNames()))
                     .executes(c->storm(c,50))
@@ -51,8 +51,10 @@ public final class EWCommands {
             .then(Commands.literal("ignite").then(Commands.argument("pos",Vec3Argument.vec3())
                 .executes(c->{
                     BlockPos pos=BlockPos.containing(Vec3Argument.getVec3(c,"pos"));
-                    FireEvents.ignite(c.getSource().getLevel(),pos);
-                    c.getSource().sendSuccess(()->Component.literal("Wildfire ignition requested at "+pos.toShortString()),true);
+                    if(!FireEvents.ignite(c.getSource().getLevel(),pos)){
+                        c.getSource().sendFailure(Component.literal("Cannot ignite: no loaded fuel at "+pos.toShortString()));return 0;
+                    }
+                    c.getSource().sendSuccess(()->Component.literal("Wildfire started at "+pos.toShortString()),true);
                     return 1;
                 })))
             .then(Commands.literal("firestatus").then(Commands.argument("pos",Vec3Argument.vec3())
@@ -74,7 +76,7 @@ public final class EWCommands {
             .then(Commands.literal("clear").executes(c->{DisasterEvents.get(c.getSource().getLevel()).clearManual();c.getSource().sendSuccess(()->Component.literal("Addon outlines cleared; PMWeather storms unaffected. Use /ew clear all for a complete reset."),true);return 1;})
                 .then(Commands.literal("all").executes(c->{
                     ServerLevel level=c.getSource().getLevel();
-                    DisasterEvents.get(level).clearManual();
+                    DisasterEvents.get(level).clearAll();
                     FireEvents.stop(level);
                     SurgeData.get(level).cleanupAll(level);
                     var handler=GameBusEvents.MANAGERS.get(level.dimension());

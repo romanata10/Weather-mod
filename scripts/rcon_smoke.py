@@ -83,6 +83,7 @@ with connection as conn:
     check(33, "ew clear all", "PMWeather storms and addon weather cleared")
     check(34, "setblock 2 63 0 minecraft:water", "Changed")
     check(35, "ew disaster waterspout 2 64 0", "Started waterspout")
+    check(39, "setblock 2 64 0 minecraft:air", "Changed")
     check(36, "ew disaster flood 2 64 0", "Started flood")
     check(37, "execute if block 2 64 0 minecraft:water", "passed")
     check(38, "ew clear all", "PMWeather storms and addon weather cleared")
