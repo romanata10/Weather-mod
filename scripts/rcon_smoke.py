@@ -55,7 +55,7 @@ with connection as conn:
     check(9, "forceload add 0 0", "force")
     check(10, "weather clear", "clear")
     check(11, "setblock 0 70 0 minecraft:grass_block", "Changed")
-    check(12, "setblock 0 71 0 minecraft:air", "Changed")
+    send(conn, 12, 2, "setblock 0 71 0 minecraft:air")  # air may already exist
     check(13, "ew ignite 0 70 0", "Wildfire ignition requested")
     # Give the server 10+ seconds to tick 200 simulated fire ticks.
     time.sleep(14)
