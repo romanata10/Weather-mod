@@ -87,7 +87,6 @@ with connection as conn:
     check(30, "ew disaster squall 0 100 0", "Started squall")
     check(46, "execute positioned 0 100 0 run ew status", "active squall gusts: 1")
     check(47, "summon minecraft:pig 0 74 0 {NoGravity:1b,Invulnerable:1b,PersistenceRequired:1b}", "Summoned")
-    print("pig movement speed:",send(conn,51,2,"attribute @e[type=minecraft:pig,limit=1] minecraft:generic.movement_speed base set 0"),flush=True)
     import re
     def pig_position(index):
         reply=send(conn,index,2,"data get entity @e[type=minecraft:pig,limit=1,sort=nearest] Pos")
