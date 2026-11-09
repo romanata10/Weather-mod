@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
 
 /** Operator commands. PMWeather storms are created via the public PMWeatherAPI StormBuilder. */
 public final class EWCommands {
-    private static final String[] EFFECTS={"hail","rainbow","sprite","ball_lightning","superbolt","squall","dust_devil","waterspout","landspout","snow_whirl","fire_whirl","hurricane","typhoon","cyclone","meteotsunami","tsunami","surge","flood","wildfire","forest_fire"};
+    private static final String[] EFFECTS={"hail","rainbow","sprite","ball_lightning","superbolt","squall","dust_devil","waterspout","landspout","snow_whirl","fire_whirl","hurricane","typhoon","cyclone","meteotsunami","tsunami","surge","flood","whirlpool","wildfire","forest_fire"};
     @SubscribeEvent public void register(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("ew").requires(s->s.hasPermission(2))
             .then(Commands.literal("help").executes(c->{c.getSource().sendSuccess(()->Component.literal("/ew storm <pm_type> [risk 0..100]; /ew vortex <shape> <ef 0..5> (native PM); /ew outline <shape> <ef> (addon preview); /ew disaster <name> [x y z]; /ew clear"),false);return 1;}))
@@ -121,10 +121,8 @@ public final class EWCommands {
                 context.getSource().sendFailure(Component.literal("PMWeather cannot spawn here (unloaded chunk or storm limit)."));return 0;
             }
         } catch(RuntimeException error){context.getSource().sendFailure(Component.literal("PMWeather spawn failed: "+error.getMessage()));return 0;}
-        boolean silhouette=DisasterEvents.get(level).summonFunnel(level,context.getSource().getPosition(),shape,ef);
-        context.getSource().sendSuccess(()->Component.literal("Native PMWeather supercell EF"+ef+
-            (silhouette?" with PM-textured addon "+shape+" silhouette (approximate; not a PM renderer shape)"
-                :"; silhouette unavailable (4-outline limit). PMWeather controls the funnel.")),true);
+        context.getSource().sendSuccess(()->Component.literal("One native PMWeather supercell EF"+ef+
+            " (requested "+shape+"; PMWeather controls its actual funnel geometry; no second silhouette)."),true);
         return 1;
     }
     private static int outline(CommandContext<CommandSourceStack> context) {

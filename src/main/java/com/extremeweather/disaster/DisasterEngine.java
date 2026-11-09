@@ -31,6 +31,7 @@ import java.util.*;
 public final class DisasterEngine {
     private final List<Whirl> whirls=new ArrayList<>();
     private final List<HailField> hailFields=new ArrayList<>();
+    private final List<Whirlpool> whirlpools=new ArrayList<>();
     private final SkyPhenomena sky=new SkyPhenomena();
     private final com.extremeweather.vortex.ManualVortices manual=new com.extremeweather.vortex.ManualVortices();
     private final com.extremeweather.ocean.TropicalSystems tropical=new com.extremeweather.ocean.TropicalSystems();
@@ -47,6 +48,12 @@ public final class DisasterEngine {
             else field.tick(level);
         }
         if(ticks%20==0)com.extremeweather.ocean.SurgeData.get(level).tick(level);
+        if(ticks%5==0)for(Iterator<Whirlpool> it=whirlpools.iterator();it.hasNext();) {
+            Whirlpool vortex=it.next();
+            if(++vortex.age>240 || !level.hasChunkAt(BlockPos.containing(vortex.center)) ||
+                    !level.getFluidState(BlockPos.containing(vortex.center).below()).is(FluidTags.WATER))it.remove();
+            else vortex.tick(level);
+        }
         if(ticks%2==0)sky.tick(level);
         if(ticks%5==0) {
             for(Iterator<Whirl> it=whirls.iterator();it.hasNext();) {
@@ -72,6 +79,13 @@ public final class DisasterEngine {
             } else if(level.random.nextInt(75)==0)tryWhirl(level,player,false);
             if(stormy && level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN)) {
                 seaEffects(level,player,wind,windSpeed);
+                if(whirlpools.size()<4 && level.random.nextInt(140)==0) {
+                    BlockPos water=player.blockPosition().offset(level.random.nextInt(48)-24,0,level.random.nextInt(48)-24);
+                    BlockPos surface=new BlockPos(water.getX(),level.getSeaLevel()+1,water.getZ());
+                    if(level.hasChunkAt(surface) && level.getFluidState(surface.below()).is(FluidTags.WATER)
+                            && whirlpools.stream().noneMatch(w->w.center.distanceToSqr(surface.getCenter())<28*28))
+                        whirlpools.add(new Whirlpool(surface.getCenter()));
+                }
                 if(windSpeed>.8 && level.random.nextInt(12)==0)stormSurge(level,player,wind);
             }
             if(!stormy && lastStorm.containsKey(player.getUUID()) && ticks-lastStorm.get(player.getUUID())<1800 && level.isDay() && !level.isRaining())
@@ -101,7 +115,7 @@ public final class DisasterEngine {
         return manual.spawn(level,pos,shape,ef);
     }
     public void clearManual(){manual.clear();}
-    public void clearAll(){manual.clear();whirls.clear();hailFields.clear();sky.clear();tropical.clear();lastStorm.clear();}
+    public void clearAll(){manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();sky.clear();tropical.clear();lastStorm.clear();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
     public EffectResult trigger(ServerLevel level,Vec3 position,String effect) {
@@ -111,6 +125,12 @@ public final class DisasterEngine {
             case "hail" -> {
                 if(hailFields.size()>=4)return new EffectResult(false,"Hail limit reached (4 per dimension)");
                 hailFields.add(new HailField(position));
+            }
+            case "whirlpool" -> {
+                if(whirlpools.size()>=6)return new EffectResult(false,"Whirlpool limit reached (6 per dimension)");
+                if(!level.getFluidState(pos.below()).is(FluidTags.WATER))
+                    return new EffectResult(false,"A whirlpool requires water below the target position");
+                whirlpools.add(new Whirlpool(position));
             }
             case "rainbow" -> sky.rainbow(level,position);
             case "sprite" -> sky.sprite(level,pos);
@@ -166,6 +186,28 @@ public final class DisasterEngine {
             default -> {return new EffectResult(false,"Unknown disaster");}
         }
         return new EffectResult(true,"Started "+effect+" at "+pos.toShortString());
+    }
+    /** Surface whirlpool: PM foam and authoritative water-only entity movement.
+     * It does not claim to be a PMWeather-native fluid renderer. */
+    private static final class Whirlpool {
+        final Vec3 center;int age;
+        Whirlpool(Vec3 center){this.center=center;}
+        void tick(ServerLevel level) {
+            for(int i=0;i<12;i++) {
+                double angle=i*Math.PI/6+age*.22, radius=2.5+(i%3)*1.8;
+                double x=center.x+Math.cos(angle)*radius,z=center.z+Math.sin(angle)*radius;
+                level.sendParticles(ModParticleTypes.FOAM.get(),x,center.y+.1,z,2,.1,.1,.1,.01);
+            }
+            if(age%4!=0)return;
+            for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,
+                    new AABB(center,center).inflate(7,3,7), e->e.isInWater() && e.isAlive())) {
+                if(entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
+                double dx=center.x-entity.getX(),dz=center.z-entity.getZ(),dist=Math.hypot(dx,dz);
+                if(dist<.2 || dist>6.5)continue;
+                entity.push(dx/dist*.045-dz/dist*.09,-.018,dz/dist*.045+dx/dist*.09);
+                entity.hurtMarked=true;
+            }
+        }
     }
     private static final class HailField {
         final Vec3 center;int age;
