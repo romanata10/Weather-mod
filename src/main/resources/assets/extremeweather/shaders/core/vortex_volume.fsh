@@ -30,11 +30,11 @@ void main() {
     for (int i = 0; i < 24; ++i) {
         float depth = (float(i) + 0.5) / 24.0;
         vec3 samplePoint = vec3(coord.x, coord.y, depth * 2.0 - 1.0);
-        float d = density(samplePoint) * 0.08;
+        float d = density(samplePoint) * 0.24;
         light += (1.0 - accumulated) * d * (0.5 + 0.5 * depth);
         accumulated += (1.0 - accumulated) * d;
     }
-    if (accumulated < 0.012) discard;
+    if (accumulated < 0.025) discard;
     vec3 shaded = volumeTint.rgb * mix(0.42, 1.1, clamp(light * 3.0, 0.0, 1.0));
-    fragColor = vec4(shaded, clamp(accumulated * volumeTint.a, 0.0, 0.84));
+    fragColor = vec4(shaded, clamp(accumulated * volumeTint.a, 0.0, 0.94));
 }

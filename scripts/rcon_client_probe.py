@@ -46,7 +46,11 @@ for attempt in range(70):
                         command(sock,5+visual_attempt,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
                     try:
                         if 'ExtremeWeather dust volume rendered with world GUI visible' in open('client-smoke.log',errors='ignore').read():
-                            command(sock,80,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run ew disaster dust_devil')
+                            command(sock,92,2,'execute as @a at @s run tp @s ~ 145 ~ 0 0')
+                            command(sock,80,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^12 run ew disaster dust_devil')
+                            for _ in range(8):
+                                command(sock,93,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^12 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
+                                time.sleep(.35)
                             print('world GUI visible and volume renderer ran',flush=True)
                             break
                     except OSError:
