@@ -142,22 +142,23 @@ jobs:
         if: always()
         shell: bash
         run: |
-          for FILE in probe.log client-smoke.log visual-server.log; do
-            if [ -f "$FILE" ]; then
-              echo "Latest $FILE lines:"
-              tail -28 "$FILE"
-              while IFS= read -r LINE; do
-                LINE=${LINE//'%'/'%25'}; LINE=${LINE//$'\r'/'%0D'}; LINE=${LINE//$'\n'/'%0A'}
-                echo "::notice::$FILE $LINE"
-              done < <(grep -viE 'ALSA lib|OpenAL|pa_alsa|pulseaudio' "$FILE" | tail -12 || true)
-              if [ "$FILE" = client-smoke.log ]; then
-                while IFS= read -r LINE; do
-                  LINE=${LINE//'%'/'%25'}; LINE=${LINE//$'\r'/'%0D'}; LINE=${LINE//$'\n'/'%0A'}
-                  echo "::notice::client-startup $LINE"
-                done < <(grep -Ei '(quick.?play|connect|join|extremeweather|failed|exception|server address)' "$FILE" | grep -vi 'ALSA lib' | head -22 || true)
-              fi
-            fi
-          done
+          if [ -f probe.log ]; then
+            DATA=$(tail -10 probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::RCON probe%0A$DATA"
+          fi
+          if [ -f client-smoke.log ]; then
+            DATA=$(grep -Ei '(quick.?play|connect|join|extremeweather|failed|exception|server address|asset|missing)' client-smoke.log | grep -vi 'ALSA lib' | tail -16 || true)
+            DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Client connection/shader events%0A$DATA"
+            DATA=$(grep -viE 'ALSA lib|OpenAL|pa_alsa|pulseaudio' client-smoke.log | tail -13 || true)
+            DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Client log tail%0A$DATA"
+          fi
+          if [ -f visual-server.log ]; then
+            DATA=$(grep -Ei '(Done \(|joined the game|left the game|disconnect|error|exception)' visual-server.log | tail -9 || true)
+            DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Server connection events%0A$DATA"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: extremeweather-pm-neoforge-1.21.1

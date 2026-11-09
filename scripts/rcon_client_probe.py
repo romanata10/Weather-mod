@@ -19,7 +19,7 @@ def command(sock,request_id,kind,text):
         ident,typ=struct.unpack('<ii',packet[:8])
         if ident==request_id:return packet[8:-2].decode(errors='replace')
 
-for attempt in range(100):
+for attempt in range(70):
     try:
         with socket.create_connection(('127.0.0.1',25576),timeout=3) as sock:
             sock.settimeout(5)
@@ -38,4 +38,4 @@ for attempt in range(100):
         if attempt%15==0:print('waiting for connected client:',error,flush=True)
     time.sleep(2)
 else:
-    raise AssertionError('No client joined the dedicated server within 200 seconds')
+    raise AssertionError('No client joined the dedicated server within 140 seconds')
