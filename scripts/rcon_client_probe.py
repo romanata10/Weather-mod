@@ -37,7 +37,15 @@ for attempt in range(70):
                 command(sock,89,2,'time set noon')
                 command(sock,90,2,'effect give @a minecraft:slow_falling 120 10 true')
                 command(sock,91,2,'execute as @a at @s run tp @s ~ 85 ~ 0 0')
-                time.sleep(2)
+                # RCON sees the connection before the render thread dismisses
+                # Loading terrain. A baseline taken that early is meaningless.
+                for _ in range(80):
+                    try:
+                        if 'ExtremeWeather client gameplay ready for baseline capture' in Path('client-smoke.log').read_text(errors='ignore'):
+                            break
+                    except OSError:pass
+                    time.sleep(.5)
+                else:raise AssertionError('Client did not reach settled gameplay before baseline')
                 # Frame from the same joined client before any addon particle.
                 Path('baseline-now').touch()
                 for _ in range(20):
