@@ -36,5 +36,7 @@ void main() {
     }
     if (accumulated < 0.025) discard;
     vec3 shaded = volumeTint.rgb * mix(0.42, 1.1, clamp(light * 3.0, 0.0, 1.0));
-    fragColor = vec4(shaded, clamp(accumulated * volumeTint.a, 0.0, 0.94));
+    // Diagnostic silhouette: exaggerated contrast until a joined-client
+    // framebuffer confirms that the custom shader reaches the screen.
+    fragColor = vec4(0.88, 0.25, 0.06, clamp(accumulated * 2.0 * volumeTint.a, 0.0, 0.94));
 }
