@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Lossy CI screenshot preview in bounded check annotations (not a release asset)."""
 import base64
+import sys
 from io import BytesIO
 from pathlib import Path
 from PIL import Image
-path=Path('client-screen.png')
+path=Path(sys.argv[1] if len(sys.argv)>1 else 'client-screen.png')
+prefix='ClientBaseline' if len(sys.argv)>1 else 'ClientScreen'
 if not path.is_file():
     raise SystemExit(0)
 img=Image.open(path).convert('RGB')
@@ -17,4 +19,4 @@ if len(chunks)>5:
     print('::warning::Screen preview too large for CI annotations')
 else:
     for index,part in enumerate(chunks,1):
-        print(f'::notice title=ClientScreen_{index}_of_{len(chunks)}::{part}')
+        print(f'::notice title={prefix}_{index}_of_{len(chunks)}::{part}')

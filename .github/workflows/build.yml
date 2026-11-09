@@ -209,6 +209,13 @@ jobs:
             DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Server connection events%0A$DATA"
           fi
+      - name: Show unmodified client baseline in separate check annotations
+        if: always()
+        shell: bash
+        run: |
+          if [ -f client-baseline.png ]; then
+            python3 scripts/annotate_client_screen.py client-baseline.png || echo '::warning::Baseline thumbnail unavailable'
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
