@@ -74,6 +74,13 @@ with connection as conn:
         raise AssertionError("Wildfire did not replace grass/dirt with a scorched block after 26 seconds")
     check(21, "execute in minecraft:overworld positioned 0 100 0 run ew storm supercell 50", "Spawned PMWeather storm")
     check(22, "execute in minecraft:overworld positioned 0 100 0 run ew vortex rope 1", "Native PMWeather supercell")
+    check(44, "execute in minecraft:overworld positioned 0 100 0 run ew vortex multi_vortex 2", "Native PMWeather supercell")
+    reply=send(conn,45,2,"execute in minecraft:overworld positioned 0 100 0 run ew status")
+    print("native vortex state:",reply,flush=True)
+    import re
+    matched=re.search(r"native sub-vortices: (\d+)",reply)
+    if not matched or int(matched.group(1))<4:
+        raise AssertionError("PMWeather storm did not retain four native satellites")
     check(27, "execute in minecraft:overworld positioned 0 100 0 run ew status", "PMWeather storms nearby:")
     check(28, "ew clear all", "PMWeather storms and addon weather cleared")
     check(29, "ew disaster hail 0 70 0", "Started hail")

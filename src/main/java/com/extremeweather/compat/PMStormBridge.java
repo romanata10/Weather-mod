@@ -1,6 +1,7 @@
 package com.extremeweather.compat;
 
 import dev.protomanly.pmweather.weather.Storm;
+import dev.protomanly.pmweather.weather.Vorticy;
 import dev.protomanly.pmweather.weather.WeatherHandlerServer;
 import com.extremeweather.vortex.FunnelShape;
 import dev.protomanly.pmweather.weather.storms.StormType;
@@ -45,6 +46,11 @@ public final class PMStormBridge {
         storm.maxWidth=Math.max(16,Math.round(width));
         storm.maxWindspeed=65+rating*30;
         storm.tornadoShape=6f+outline.ordinal()*10f/(FunnelShape.values().length-1);
+        // Use PMWeather's own satellite-vortex physics and renderer, not a second
+        // particle funnel. Constructor parameters: max wind multiplier, relative
+        // width, distance from storm axis and life in ticks (verified against JAR).
+        if(storm.vorticies!=null)for(int i=0;i<outline.satellites();i++)
+            storm.vorticies.add(new Vorticy(storm,.35f,.24f,.68f,900+rating*120));
         if(storm.weatherHandler instanceof WeatherHandlerServer handler)handler.syncStormUpdate(storm);
         return storm;
     }
