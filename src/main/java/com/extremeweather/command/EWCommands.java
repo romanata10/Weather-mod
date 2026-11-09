@@ -74,9 +74,11 @@ public final class EWCommands {
                 int fires=FireEvents.active(level);
                 int squalls=DisasterEvents.get(level).activeSqualls();
                 int smallVortices=DisasterEvents.get(level).activeSmallVortices();
+                long pushes=DisasterEvents.get(level).squallPushes();
                 c.getSource().sendSuccess(()->Component.literal("PMWeather storms nearby: "+count+
                     "; native sub-vortices: "+satellites+"; active squall gusts: "+squalls+
-                    "; active small vortices: "+smallVortices+"; tracked wildfire blocks: "+fires),false);
+                    "; active small vortices: "+smallVortices+"; squall pushes: "+pushes+
+                    "; tracked wildfire blocks: "+fires),false);
                 return 1;
             }))
             .then(Commands.literal("clear").executes(c->{DisasterEvents.get(c.getSource().getLevel()).clearManual();c.getSource().sendSuccess(()->Component.literal("Addon outlines cleared; PMWeather storms unaffected. Use /ew clear all for a complete reset."),true);return 1;})

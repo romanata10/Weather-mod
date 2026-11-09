@@ -128,6 +128,7 @@ public final class DisasterEngine {
     public void clearManual(){manual.clear();}
     public void clearAll(){manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
     public int activeSqualls(){return squalls.size();}
+    public long squallPushes(){return squalls.stream().mapToLong(field->field.pushes).sum();}
     public int activeSmallVortices(){return whirls.size();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
@@ -208,7 +209,7 @@ public final class DisasterEngine {
     /** Real PMWeather squall cloud, coupled to server-authoritative gusts.
      * The PM storm remains the only cloud, so no decorative particle cloud is added. */
     private static final class SquallField {
-        final dev.protomanly.pmweather.weather.Storm storm;int age;
+        final dev.protomanly.pmweather.weather.Storm storm;int age;long pushes;
         SquallField(dev.protomanly.pmweather.weather.Storm storm){this.storm=storm;}
         void tick(ServerLevel level) {
             Vec3 center=storm.position;
@@ -225,7 +226,7 @@ public final class DisasterEngine {
                 // PM wind determines heading; calm cells still get a gust.
                 double x=length<.04?Math.cos(storm.tickCount*.08):wind.x/length;
                 double z=length<.04?Math.sin(storm.tickCount*.08):wind.z/length;
-                entity.push(x*.18,.018,z*.18);entity.hurtMarked=true;
+                entity.push(x*.18,.018,z*.18);entity.hurtMarked=true;pushes++;
                 if(age%4==0 && level.canSeeSky(at) && level.random.nextInt(5)==0)
                     entity.hurt(level.damageSources().generic(),1f);
             }
