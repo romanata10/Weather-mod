@@ -49,22 +49,6 @@ jobs:
           print('PMWeather particle texture resource IDs validated against dependency JAR')
           PYVALIDATE
           }
-      - name: Inspect native sub-vortex lifecycle and renderer interfaces
-        shell: bash
-        run: |
-          JAR=$(find "$HOME/.gradle" -type f -name 'protomanlys-weather-*.jar' | head -1)
-          for CLASS in dev.protomanly.pmweather.weather.Vorticy dev.protomanly.pmweather.weather.Storm; do
-            if [[ "$CLASS" == *Vorticy ]]; then
-              DATA=$(javap -c -classpath "$JAR" "$CLASS" | sed -n '/public dev.protomanly.pmweather.weather.Vorticy(/,/public void tick()/p' | head -115)
-            else
-              DATA=$(javap -c -classpath "$JAR" "$CLASS" | sed -n '/public void iterateVorticies()/,/public net.minecraft.core.BlockPos getBlockPos()/p' | head -120)
-            fi
-            DATA=${DATA//$'\n'/'%0A'}
-            echo "::notice::Native $CLASS lifecycle%0A$DATA"
-          done
-          CLASSES=$(jar tf "$JAR" | grep 'dev/protomanly/pmweather/render/.*class' | head -80)
-          CLASSES=${CLASSES//$'\n'/'%0A'}
-          echo "::notice::PM render classes%0A$CLASSES"
       - name: Dedicated server and PMWeather command integration test
         shell: bash
         run: |
