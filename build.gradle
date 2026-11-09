@@ -17,6 +17,8 @@ neoForge {
         client {
             client()
             if (project.hasProperty('clientJoinAddress')) {
+                programArgument '--username'
+                programArgument 'ShaderTester'
                 programArgument '--quickPlayMultiplayer'
                 programArgument project.property('clientJoinAddress').toString()
             }
