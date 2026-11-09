@@ -30,8 +30,10 @@ for attempt in range(70):
                 print('joined client:',listing,flush=True)
                 # Put the camera above terrain, facing a clear horizontal view.
                 # Otherwise an arbitrary spawn may hide the vortex behind foliage.
+                command(sock,88,2,'weather clear 100000')
+                command(sock,89,2,'time set noon')
                 command(sock,90,2,'effect give @a minecraft:slow_falling 120 10 true')
-                command(sock,91,2,'execute as @a at @s run tp @s ~ 145 ~ 0 0')
+                command(sock,91,2,'execute as @a at @s run tp @s ~ 225 ~ 0 0')
                 time.sleep(2)
                 particle=command(sock,3,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
                 print('direct volume spawn:',particle,flush=True)
@@ -46,7 +48,7 @@ for attempt in range(70):
                         command(sock,5+visual_attempt,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
                     try:
                         if 'ExtremeWeather dust volume rendered with world GUI visible' in open('client-smoke.log',errors='ignore').read():
-                            command(sock,92,2,'execute as @a at @s run tp @s ~ 145 ~ 0 0')
+                            command(sock,92,2,'execute as @a at @s run tp @s ~ 225 ~ 0 0')
                             command(sock,80,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^12 run ew disaster dust_devil')
                             for _ in range(8):
                                 command(sock,93,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^12 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
