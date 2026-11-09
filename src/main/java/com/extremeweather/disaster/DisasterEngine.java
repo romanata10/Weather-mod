@@ -134,7 +134,7 @@ public final class DisasterEngine {
             }
             case "rainbow" -> sky.rainbow(level,position);
             case "sprite" -> {
-                if(!sky.sprite(level,pos))return new EffectResult(false,"Sprite requires night and a nearby PMWeather thundercloud (day="+level.isDay()+", registered storms="+NearbyStorms.get(level).stormsNearBlock(pos,2048).size()+")");
+                if(!sky.sprite(level,pos))return new EffectResult(false,"Sprite requires night and a nearby PMWeather thundercloud (dayTime="+(level.getDayTime()%24000)+", registered storms="+NearbyStorms.get(level).stormsNearBlock(pos,2048).size()+")");
             }
             case "ball_lightning" -> {
                 if(!sky.canSpawnBall())return new EffectResult(false,"Ball lightning limit reached (8 per dimension)");

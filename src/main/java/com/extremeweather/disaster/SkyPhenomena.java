@@ -41,7 +41,8 @@ public final class SkyPhenomena {
     /** Short-lived red sprite above a PMWeather thundercloud. The photo is a
      * reference for crown-and-tendril geometry, not an asset copied into the mod. */
     public boolean sprite(ServerLevel level, BlockPos origin) {
-        if(level.isDay())return false;
+        long time=level.getDayTime()%24000;
+        if(time<13000 || time>23000)return false;
         // PMWeather places cloud centers high above the terrain: a spherical
         // range check against the player's Y rejects storms directly overhead.
         var cloud=net.nullved.pmweatherapi.storm.NearbyStorms.get(level)
