@@ -42,9 +42,11 @@ public final class DustVolumeParticle extends Particle {
     }
     @Override public ParticleRenderType getRenderType(){return VOLUME;}
     @Override public void render(VertexConsumer vertices,Camera camera,float partialTick) {
-        if(!firstRenderLogged) {
+        // ParticleEngine may draw behind the "Loading terrain" screen.
+        // Only report a gameplay-visible render after that screen is gone.
+        if(!firstRenderLogged && net.minecraft.client.Minecraft.getInstance().screen==null) {
             firstRenderLogged=true;
-            com.mojang.logging.LogUtils.getLogger().info("ExtremeWeather dust volume rendered in-world");
+            com.mojang.logging.LogUtils.getLogger().info("ExtremeWeather dust volume rendered with world GUI visible");
         }
         Vec3 cameraPos=camera.getPosition();
         Vector3f base=new Vector3f((float)(x-cameraPos.x),(float)(y-cameraPos.y),(float)(z-cameraPos.z));

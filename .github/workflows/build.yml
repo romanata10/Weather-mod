@@ -130,7 +130,7 @@ jobs:
             python3 -m pip install --quiet pillow > capture-install.log 2>&1 || true
             for attempt in $(seq 1 170); do
               if [ -f capture-now ]; then
-                sleep 0.5
+                sleep 0.2
                 python3 scripts/capture_client.py > capture.log 2>&1 || true
                 break
               fi
@@ -145,7 +145,7 @@ jobs:
           cat probe.log
           FOUND=0
           for attempt in $(seq 1 30); do
-            if grep -Fq 'ExtremeWeather dust volume rendered in-world' client-smoke.log; then FOUND=1; break; fi
+            if grep -Fq 'ExtremeWeather dust volume rendered with world GUI visible' client-smoke.log; then FOUND=1; break; fi
             if ! kill -0 "$CLIENT_PID" 2>/dev/null; then break; fi
             sleep 1
           done
@@ -177,7 +177,7 @@ jobs:
             echo "::notice::RCON probe%0A$DATA"
           fi
           if [ -f client-smoke.log ]; then
-            if grep -Fq 'ExtremeWeather dust volume rendered in-world' client-smoke.log; then
+            if grep -Fq 'ExtremeWeather dust volume rendered with world GUI visible' client-smoke.log; then
               echo '::notice::Real Minecraft client called DustVolumeParticle.render in-world'
             fi
             DATA=$(grep -Ei '(quick.?play|connect|join|extremeweather|failed|exception|server address|asset|missing)' client-smoke.log | grep -vi 'ALSA lib' | tail -16 || true)

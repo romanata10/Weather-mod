@@ -33,6 +33,22 @@ for attempt in range(70):
                 disaster=command(sock,4,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run ew disaster dust_devil')
                 print('dust devil command:',disaster,flush=True)
                 if 'Started dust_devil' not in disaster:raise AssertionError('dust devil refused client position')
+                # Joining at the server can precede dismissing the client's
+                # Loading terrain screen. Keep emitting the short-lived volume
+                # until the client actually draws it with the world GUI visible.
+                for visual_attempt in range(35):
+                    if visual_attempt%2==0:
+                        command(sock,5+visual_attempt,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
+                    try:
+                        if 'ExtremeWeather dust volume rendered with world GUI visible' in open('client-smoke.log',errors='ignore').read():
+                            command(sock,80,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run ew disaster dust_devil')
+                            print('world GUI visible and volume renderer ran',flush=True)
+                            break
+                    except OSError:
+                        pass
+                    time.sleep(1)
+                else:
+                    raise AssertionError('client never rendered the volume with its world GUI visible')
                 break
     except (OSError,ConnectionError) as error:
         if attempt%15==0:print('waiting for connected client:',error,flush=True)
