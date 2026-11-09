@@ -120,6 +120,8 @@ with connection as conn:
     check(41, "time set midnight", "Set the time")
     print("storm status before sprite:",send(conn,43,2,"execute positioned 0 100 0 run ew status"),flush=True)
     check(42, "ew disaster sprite 0 100 0", "Started sprite")
+    check(62, "ew disaster dust_devil 0 71 0", "Started dust_devil")
+    check(63, "ew status", "active small vortices: 1")
     check(31, "ew clear all", "PMWeather storms and addon weather cleared")
     check(32, "ew disaster hurricane 0 100 0", "Started hurricane")
     check(61, "execute positioned 0 100 0 run ew status", "active cyclone systems: 1")
