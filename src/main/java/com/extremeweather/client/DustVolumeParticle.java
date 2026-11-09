@@ -18,6 +18,7 @@ import org.joml.Vector3f;
 /** One billboard bounding a GPU raymarched density field for a dust devil.
  * This is NOT a replacement for PMWeather's own tornado/cloud renderer. */
 public final class DustVolumeParticle extends Particle {
+    private static boolean firstRenderLogged;
     private static final ParticleRenderType VOLUME=new ParticleRenderType() {
         @Override public BufferBuilder begin(Tesselator tesselator,TextureManager textures) {
             if(VolumeShader.vortex()==null)return null;
@@ -41,6 +42,10 @@ public final class DustVolumeParticle extends Particle {
     }
     @Override public ParticleRenderType getRenderType(){return VOLUME;}
     @Override public void render(VertexConsumer vertices,Camera camera,float partialTick) {
+        if(!firstRenderLogged) {
+            firstRenderLogged=true;
+            com.mojang.logging.LogUtils.getLogger().info("ExtremeWeather dust volume rendered in-world");
+        }
         Vec3 cameraPos=camera.getPosition();
         Vector3f base=new Vector3f((float)(x-cameraPos.x),(float)(y-cameraPos.y),(float)(z-cameraPos.z));
         Vector3f right=new Vector3f(1,0,0).rotate(camera.rotation()).mul(5.0f);

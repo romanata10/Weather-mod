@@ -97,22 +97,46 @@ jobs:
             exit 1
           }
           cat rcon-smoke.log
-      - name: Client volume shader loading smoke (graphics still unverified)
+      - name: In-world raymarch client probe (visual appearance still unreviewed)
         continue-on-error: true
         shell: bash
         run: |
           if ! command -v xvfb-run >/dev/null; then
-            echo '::warning::Xvfb not present; client shader has not been tested'
+            echo '::warning::Xvfb not present; in-world client rendering untested'
             exit 1
           fi
-          timeout 160s xvfb-run -a -s '-screen 0 1280x720x24' \
-            gradle runClient --no-daemon > client-smoke.log 2>&1 || true
-          if ! grep -Fq 'ExtremeWeather volume shader loaded' client-smoke.log; then
-            tail -70 client-smoke.log
-            echo '::warning::Client shader registration was not confirmed; do not ship as a graphics feature'
+          mkdir -p runserver-visual
+          RCON_PASSWORD=$(openssl rand -hex 16)
+          printf 'eula=true\n' > runserver-visual/eula.txt
+          printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\n' "$RCON_PASSWORD" > runserver-visual/server.properties
+          timeout 300s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" "${CLIENT_PID:-}" 2>/dev/null || true' EXIT
+          READY=0
+          for attempt in $(seq 1 140); do
+            if grep -Eq 'Done \([0-9.]+s\)!' visual-server.log; then READY=1; break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then tail -65 visual-server.log; exit 1; fi
+          timeout 220s xvfb-run -a -s '-screen 0 1280x720x24' \
+            gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &
+          CLIENT_PID=$!
+          python3 scripts/rcon_client_probe.py "$RCON_PASSWORD" || {
+            tail -55 client-smoke.log;tail -30 visual-server.log;exit 1;
+          }
+          FOUND=0
+          for attempt in $(seq 1 30); do
+            if grep -Fq 'ExtremeWeather dust volume rendered in-world' client-smoke.log; then FOUND=1; break; fi
+            if ! kill -0 "$CLIENT_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$FOUND" -ne 1 ]; then
+            tail -75 client-smoke.log
+            echo '::warning::Real client did not report drawing the dust volume'
             exit 1
           fi
-          echo 'Client accepted ExtremeWeather shader resource; appearance still needs an in-game review.'
+          echo 'Client renderer executed for the raymarched dust volume; visual quality still requires a human review.'
       - uses: actions/upload-artifact@v4
         with:
           name: extremeweather-pm-neoforge-1.21.1

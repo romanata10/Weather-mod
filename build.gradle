@@ -14,8 +14,17 @@ repositories {
 neoForge {
     version = neo_version
     runs {
-        client { client() }
-        server { server(); programArgument '--nogui'; gameDirectory = project.file('runserver') }
+        client {
+            client()
+            if (project.hasProperty('clientJoinAddress')) {
+                programArgument '--quickPlayMultiplayer'
+                programArgument project.property('clientJoinAddress').toString()
+            }
+        }
+        server {
+            server(); programArgument '--nogui'
+            gameDirectory = project.file(project.findProperty('serverRunDir') ?: 'runserver')
+        }
     }
     mods { extremeweather { sourceSet(sourceSets.main) } }
 }

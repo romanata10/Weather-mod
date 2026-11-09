@@ -18,6 +18,7 @@ bin/
 
 # Minecraft run directories
 run/
+runserver*/
 runs/
 logs/
 
