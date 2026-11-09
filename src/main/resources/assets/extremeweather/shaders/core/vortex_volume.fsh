@@ -34,6 +34,9 @@ void main() {
         light += (1.0 - accumulated) * d * (0.5 + 0.5 * depth);
         accumulated += (1.0 - accumulated) * d;
     }
+    // Probe: a full opaque quad rules out density/alpha as the missing silhouette.
+    fragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    return;
     if (accumulated < 0.025) discard;
     vec3 shaded = volumeTint.rgb * mix(0.42, 1.1, clamp(light * 3.0, 0.0, 1.0));
     // Diagnostic silhouette: exaggerated contrast until a joined-client
