@@ -8,9 +8,9 @@ path=Path('client-screen.png')
 if not path.is_file():
     raise SystemExit(0)
 img=Image.open(path).convert('RGB')
-img.thumbnail((480,270))
+img.thumbnail((320,180))
 compressed=BytesIO()
-img.save(compressed,format='JPEG',quality=38,optimize=True)
+img.save(compressed,format='JPEG',quality=25,optimize=True)
 encoded=base64.b64encode(compressed.getvalue()).decode('ascii')
 chunks=[encoded[i:i+3500] for i in range(0,len(encoded),3500)]
 if len(chunks)>5:
