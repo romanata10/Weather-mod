@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""Capture Xvfb client framebuffer in CI; image is diagnostic, not visual approval."""
+"""Capture a complete Xvfb framebuffer atomically (diagnostic, not visual approval)."""
 from PIL import ImageGrab
+from pathlib import Path
 import os
-# Publish atomically: the workflow must not open a PNG while Pillow is writing it.
-ImageGrab.grab(xdisplay=os.environ['DISPLAY']).save('client-screen.tmp.png')
-os.replace('client-screen.tmp.png','client-screen.png')
+import sys
+
+path = Path(sys.argv[1] if len(sys.argv) > 1 else 'client-screen.png')
+temporary = path.with_name(path.stem + '.tmp.png')
+ImageGrab.grab(xdisplay=os.environ['DISPLAY']).save(temporary)
+os.replace(temporary, path)

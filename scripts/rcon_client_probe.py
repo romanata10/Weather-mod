@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """CI-only: connect a real client, trigger a dust devil, inspect the client render log."""
 import socket,struct,sys,time
+from pathlib import Path
 
 def exact(sock,count):
     buf=b''
@@ -37,6 +38,12 @@ for attempt in range(70):
                 command(sock,90,2,'effect give @a minecraft:slow_falling 120 10 true')
                 command(sock,91,2,'execute as @a at @s run tp @s ~ 85 ~ 0 0')
                 time.sleep(2)
+                # Frame from the same joined client before any addon particle.
+                Path('baseline-now').touch()
+                for _ in range(20):
+                    if Path('client-baseline.png').is_file():break
+                    time.sleep(.5)
+                else:raise AssertionError('No pre-vortex framebuffer from joined client')
                 particle=command(sock,3,2,'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
                 print('direct volume spawn:',particle,flush=True)
                 disaster=command(sock,4,2,'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run ew disaster dust_devil')

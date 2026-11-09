@@ -130,6 +130,10 @@ jobs:
             GAME=$!
             python3 -m pip install --quiet pillow > capture-install.log 2>&1 || true
             for attempt in $(seq 1 170); do
+              if [ -f baseline-now ]; then
+                python3 scripts/capture_client.py client-baseline.png > baseline-capture.log 2>&1 || true
+                rm baseline-now
+              fi
               if [ -f capture-now ]; then
                 sleep 0.2
                 python3 scripts/capture_client.py > capture.log 2>&1 || true
@@ -208,7 +212,9 @@ jobs:
         if: always()
         with:
           name: headless-client-screen
-          path: client-screen.png
+          path: |
+            client-screen.png
+            client-baseline.png
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
