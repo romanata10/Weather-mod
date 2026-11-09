@@ -78,6 +78,8 @@ with connection as conn:
     check(28, "ew clear all", "PMWeather storms and addon weather cleared")
     check(29, "ew disaster hail 0 70 0", "Started hail")
     check(30, "ew disaster squall 0 100 0", "Started squall")
+    check(41, "time set midnight", "Set the time")
+    check(42, "ew disaster sprite 0 100 0", "Started sprite")
     check(31, "ew clear all", "PMWeather storms and addon weather cleared")
     check(32, "ew disaster hurricane 0 100 0", "Started hurricane")
     check(33, "ew clear all", "PMWeather storms and addon weather cleared")

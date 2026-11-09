@@ -38,19 +38,35 @@ public final class SkyPhenomena {
         }
     }
 
-    /** A branching red sprite originating above a large thundercloud, visible at night. */
-    public void sprite(ServerLevel level, BlockPos origin) {
-        double baseY=Math.min(level.getMaxBuildHeight()-65,Math.max(origin.getY()+80,155));
-        for(int branch=0;branch<11;branch++) {
-            double x=origin.getX()+(branch-5)*2.5;
-            double z=origin.getZ()+((branch*17)%9)-4;
-            var glow=new DustParticleOptions(branch%3==0?new Vector3f(1f,.32f,.23f):new Vector3f(.75f,.08f,.24f),1.5f);
-            for(int i=0;i<11;i++) {
-                double y=baseY+25-i*3;
-                broadcastSky(level,Vec3.atCenterOf(origin),glow,x+Math.sin(i*.8+branch)*i*.2,y,z,1,.1,.2,.1,0);
+    /** Short-lived red sprite above a PMWeather thundercloud. The photo is a
+     * reference for crown-and-tendril geometry, not an asset copied into the mod. */
+    public boolean sprite(ServerLevel level, BlockPos origin) {
+        if(level.isDay())return false;
+        var storms=net.nullved.pmweatherapi.storm.NearbyStorms.get(level).stormsNearBlock(origin,220);
+        if(storms.isEmpty())return false;
+        var cloud=storms.get(0);
+        double x0=cloud.position.x,z0=cloud.position.z;
+        double crownY=Math.min(level.getMaxBuildHeight()-18,Math.max(170,cloud.position.y+82));
+        if(crownY<cloud.position.y+25)return false;
+        Vec3 focus=new Vec3(x0,cloud.position.y,z0);
+        // Diffuse crimson upper glow and seven crooked, branching downward filaments.
+        var red=new DustParticleOptions(new Vector3f(1f,.07f,.11f),2f);
+        var pink=new DustParticleOptions(new Vector3f(1f,.27f,.20f),1.25f);
+        for(int strand=0;strand<9;strand++) {
+            double offset=(strand-4)*3.0;
+            double zoffset=Math.sin(strand*2.7)*5;
+            for(int step=0;step<22;step++) {
+                double t=step/21d;
+                double x=x0+offset+Math.sin(t*9+strand)*t*3;
+                double y=crownY-t*(36+(strand%4)*4);
+                double z=z0+zoffset+Math.cos(t*7+strand)*t*2;
+                broadcastSky(level,focus,step<6?red:pink,x,y,z,step<5?3:1,1.1,.6,1.1,.01);
+                if(step>=5 && step<16 && step%3==0)for(int twig=1;twig<=3;twig++)
+                    broadcastSky(level,focus,pink,x+(twig*1.7)*(strand%2==0?1:-1),y-twig*1.3,z+twig*.8,1,.2,.1,.2,0);
             }
+            broadcastSky(level,focus,red,x0+offset,crownY+3,z0+zoffset,12,2,4,2,.012);
         }
-        broadcastSky(level,Vec3.atCenterOf(origin),ParticleTypes.END_ROD,origin.getX(),baseY+25,origin.getZ(),20,8,3,8,.01);
+        return true;
     }
 
     /** Normal server particle delivery culls after 32 blocks; bows and sprites

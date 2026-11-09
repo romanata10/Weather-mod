@@ -133,7 +133,9 @@ public final class DisasterEngine {
                 whirlpools.add(new Whirlpool(position));
             }
             case "rainbow" -> sky.rainbow(level,position);
-            case "sprite" -> sky.sprite(level,pos);
+            case "sprite" -> {
+                if(!sky.sprite(level,pos))return new EffectResult(false,"Sprite requires night and a nearby PMWeather thundercloud");
+            }
             case "ball_lightning" -> {
                 if(!sky.canSpawnBall())return new EffectResult(false,"Ball lightning limit reached (8 per dimension)");
                 sky.spawnBall(level,position.add(0,4,0));
