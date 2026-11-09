@@ -20,6 +20,9 @@ jobs:
       - name: Install Gradle 8.8 from pinned GitHub release
         shell: bash
         run: |
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 3 \
+            'https://downloads.gradle.org/distributions/gradle-8.8-bin.zip' \
+            --output /tmp/gradle-8.8-bin.zip || \
           curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \
             'https://github.com/gradle/gradle-distributions/releases/download/v8.8.0/gradle-8.8-bin.zip' \
             --output /tmp/gradle-8.8-bin.zip
