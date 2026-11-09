@@ -189,7 +189,7 @@ jobs:
           fi
           if [ -f client-screen.png ]; then
             echo "::notice::Captured headless client screen ($(wc -c < client-screen.png) bytes)"
-            python3 scripts/annotate_client_screen.py
+            python3 scripts/annotate_client_screen.py || echo '::warning::Could not compress framebuffer preview for annotations; artifact still contains full PNG' 
             if command -v tesseract >/dev/null; then
               TEXT=$(tesseract client-screen.png stdout 2>/dev/null | head -35 || true)
               TEXT=${TEXT//$'\n'/'%0A'}
