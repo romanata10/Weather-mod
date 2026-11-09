@@ -86,7 +86,7 @@ with connection as conn:
     check(29, "ew disaster hail 0 70 0", "Started hail")
     check(30, "ew disaster squall 0 100 0", "Started squall")
     check(46, "execute positioned 0 100 0 run ew status", "active squall gusts: 1")
-    check(47, "summon minecraft:pig 0 74 0 {NoGravity:1b,Invulnerable:1b,PersistenceRequired:1b}", "Summoned")
+    check(47, "summon minecraft:pig 0 74 0 {Invulnerable:1b,PersistenceRequired:1b}", "Summoned")
     import re
     def pig_position(index):
         reply=send(conn,index,2,"data get entity @e[type=minecraft:pig,limit=1,sort=nearest] Pos")
@@ -97,6 +97,7 @@ with connection as conn:
     before=pig_position(48)
     time.sleep(2)
     after=pig_position(49)
+    print("pig velocity:",send(conn,53,2,"data get entity @e[type=minecraft:pig,limit=1] Motion"),flush=True)
     status=send(conn,52,2,"execute positioned 0 100 0 run ew status")
     print("squall physics status:",status,flush=True)
     pushed=re.search(r"squall pushes: (\d+)",status)
