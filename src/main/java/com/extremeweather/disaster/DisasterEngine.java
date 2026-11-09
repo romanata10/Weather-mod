@@ -207,21 +207,22 @@ public final class DisasterEngine {
         SquallField(dev.protomanly.pmweather.weather.Storm storm){this.storm=storm;}
         void tick(ServerLevel level) {
             Vec3 center=storm.position;
-            for(ServerPlayer viewer:level.players()) {
-                double distance=Math.hypot(viewer.getX()-center.x,viewer.getZ()-center.z);
-                if(distance>90 || !level.hasChunkAt(viewer.blockPosition()))continue;
-                Vec3 wind=WindEngine.getWind(viewer.blockPosition(),level);
-                double length=Math.max(.001,wind.horizontalDistance());
-                // PM wind determines heading; a calm cell still has squall gusts.
+            // Scan already loaded entities, not only player viewports: squalls
+            // must affect mobs on dedicated servers even with no player nearby.
+            AABB area=new AABB(center.x-90,level.getMinBuildHeight(),center.z-90,
+                               center.x+90,level.getMaxBuildHeight(),center.z+90);
+            for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,area)) {
+                if(entity instanceof ServerPlayer player && (player.isCreative() || player.isSpectator()))continue;
+                BlockPos at=entity.blockPosition();
+                if(!level.hasChunkAt(at) || Math.hypot(entity.getX()-center.x,entity.getZ()-center.z)>90)continue;
+                Vec3 wind=WindEngine.getWind(at,level);
+                double length=wind.horizontalDistance();
+                // PM wind determines heading; calm cells still get a gust.
                 double x=length<.04?Math.cos(storm.tickCount*.08):wind.x/length;
                 double z=length<.04?Math.sin(storm.tickCount*.08):wind.z/length;
-                for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,viewer.getBoundingBox().inflate(12))) {
-                    if(entity instanceof ServerPlayer player && (player.isCreative() || player.isSpectator()))continue;
-                    if(Math.hypot(entity.getX()-center.x,entity.getZ()-center.z)>90)continue;
-                    entity.push(x*.18,.018,z*.18);entity.hurtMarked=true;
-                    if(age%4==0 && level.canSeeSky(entity.blockPosition()) && level.random.nextInt(5)==0)
-                        entity.hurt(level.damageSources().generic(),1f);
-                }
+                entity.push(x*.18,.018,z*.18);entity.hurtMarked=true;
+                if(age%4==0 && level.canSeeSky(at) && level.random.nextInt(5)==0)
+                    entity.hurt(level.damageSources().generic(),1f);
             }
         }
     }
