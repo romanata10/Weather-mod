@@ -30,7 +30,9 @@ for attempt in range(70):
                 print('joined client:',listing,flush=True)
                 # Place camera above a flat diagnostic world and below the cloud layer.
                 # Otherwise an arbitrary spawn may hide the vortex behind foliage.
+                command(sock,87,2,'gamerule doWeatherCycle false')
                 command(sock,88,2,'weather clear 100000')
+                command(sock,86,2,'ew clear all')
                 command(sock,89,2,'time set noon')
                 command(sock,90,2,'effect give @a minecraft:slow_falling 120 10 true')
                 command(sock,91,2,'execute as @a at @s run tp @s ~ 85 ~ 0 0')
