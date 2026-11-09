@@ -122,12 +122,9 @@ jobs:
           timeout 220s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
             gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &
             GAME=$!
-            sleep 85
-            if command -v import >/dev/null; then
-              import -display "$DISPLAY" -window root client-screen.png 2> capture.log || true
-            elif command -v ffmpeg >/dev/null; then
-              ffmpeg -loglevel error -y -f x11grab -video_size 1280x720 -i "$DISPLAY" -frames:v 1 client-screen.png 2> capture.log || true
-            fi
+            python3 -m pip install --quiet pillow > capture-install.log 2>&1 || true
+            sleep 75
+            python3 -c "from PIL import ImageGrab; import os; ImageGrab.grab(xdisplay=os.environ["DISPLAY"]).save("client-screen.png")" > capture.log 2>&1 || true
             wait "$GAME"
           ' &
           CLIENT_PID=$!
