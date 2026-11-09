@@ -58,6 +58,9 @@ with connection as conn:
     print("prepare wildfire fuel:",send(conn,11,2,"setblock 0 70 0 minecraft:grass_block"),flush=True)
     check(54, "execute if block 0 70 0 minecraft:grass_block", "passed")
     send(conn, 12, 2, "setblock 0 71 0 minecraft:air")  # air may already exist
+    # PMWeather may start rain even when vanilla weather is locked clear.
+    # Shelter only the test fuel, so rain cannot extinguish it mid-probe.
+    send(conn, 101, 2, "setblock 0 73 0 minecraft:stone")
     check(13, "ew ignite 0 70 0", "Wildfire started")
     print("fire status after ignition:",send(conn, 23, 2, "ew firestatus 0 70 0"),flush=True)
     start_time = send(conn, 24, 2, "time query gametime")
@@ -73,7 +76,8 @@ with connection as conn:
         if "passed" in reply.lower() and block.startswith("extremeweather:"):
             burned = True
     if not burned:
-        raise AssertionError("Wildfire did not replace grass/dirt with a scorched block after 26 seconds")
+        raise AssertionError("Wildfire did not scorch sheltered test grass after 26 seconds; "
+                             + send(conn, 102, 2, "ew firestatus 0 70 0"))
     check(21, "execute in minecraft:overworld positioned 0 100 0 run ew storm supercell 50", "Spawned PMWeather storm")
     check(22, "execute in minecraft:overworld positioned 0 100 0 run ew vortex rope 1", "Native PMWeather supercell")
     check(44, "execute in minecraft:overworld positioned 0 100 0 run ew vortex multi_vortex 2", "Native PMWeather supercell")
