@@ -223,10 +223,14 @@ public final class DisasterEngine {
                 if(!level.hasChunkAt(at) || Math.hypot(entity.getX()-center.x,entity.getZ()-center.z)>90)continue;
                 Vec3 wind=WindEngine.getWind(at,level);
                 double length=wind.horizontalDistance();
-                // PM wind determines heading; calm cells still get a gust.
-                double x=length<.04?Math.cos(storm.tickCount*.08):wind.x/length;
-                double z=length<.04?Math.sin(storm.tickCount*.08):wind.z/length;
-                entity.push(x*.18,.018,z*.18);entity.hurtMarked=true;pushes++;
+                // PM wind determines heading; calm or non-finite readings must
+                // never silently turn a gust into a zero/NaN impulse.
+                boolean calm=!Double.isFinite(length) || length<.04;
+                double x=calm?Math.cos(storm.tickCount*.08):wind.x/length;
+                double z=calm?Math.sin(storm.tickCount*.08):wind.z/length;
+                Vec3 next=entity.getDeltaMovement().add(x*.24,.018,z*.24);
+                entity.setDeltaMovement(next);
+                entity.hurtMarked=true;pushes++;
                 if(age%4==0 && level.canSeeSky(at) && level.random.nextInt(5)==0)
                     entity.hurt(level.damageSources().generic(),1f);
             }
