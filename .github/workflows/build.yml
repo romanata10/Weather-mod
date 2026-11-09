@@ -119,8 +119,17 @@ jobs:
             sleep 1
           done
           if [ "$READY" -ne 1 ]; then tail -65 visual-server.log; exit 1; fi
-          timeout 220s xvfb-run -a -s '-screen 0 1280x720x24' \
+          timeout 220s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
             gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &
+            GAME=$!
+            sleep 85
+            if command -v import >/dev/null; then
+              import -display "$DISPLAY" -window root client-screen.png 2> capture.log || true
+            elif command -v ffmpeg >/dev/null; then
+              ffmpeg -loglevel error -y -f x11grab -video_size 1280x720 -i "$DISPLAY" -frames:v 1 client-screen.png 2> capture.log || true
+            fi
+            wait "$GAME"
+          ' &
           CLIENT_PID=$!
           python3 scripts/rcon_client_probe.py "$RCON_PASSWORD" > probe.log 2>&1 || {
             cat probe.log;tail -55 client-smoke.log;tail -30 visual-server.log;exit 1;
@@ -154,11 +163,29 @@ jobs:
             DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Client log tail%0A$DATA"
           fi
+          if [ -f client-screen.png ]; then
+            echo "::notice::Captured headless client screen ($(wc -c < client-screen.png) bytes)"
+            if command -v tesseract >/dev/null; then
+              TEXT=$(tesseract client-screen.png stdout 2>/dev/null | head -35 || true)
+              TEXT=${TEXT//$'\n'/'%0A'}
+              echo "::notice::Client screen OCR%0A$TEXT"
+            else
+              echo '::notice::tesseract unavailable; screenshot uploaded as CI artifact'
+            fi
+          else
+            echo "::warning::Client screen capture unavailable: $(cat capture.log 2>/dev/null | head -3)"
+          fi
           if [ -f visual-server.log ]; then
             DATA=$(grep -Ei '(Done \(|joined the game|left the game|disconnect|error|exception)' visual-server.log | tail -9 || true)
             DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Server connection events%0A$DATA"
           fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: headless-client-screen
+          path: client-screen.png
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: extremeweather-pm-neoforge-1.21.1
