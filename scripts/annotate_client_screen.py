@@ -8,12 +8,12 @@ path=Path('client-screen.png')
 if not path.is_file():
     raise SystemExit(0)
 img=Image.open(path).convert('RGB')
-img.thumbnail((640,360))
+img.thumbnail((480,270))
 compressed=BytesIO()
-img.save(compressed,format='JPEG',quality=58,optimize=True)
+img.save(compressed,format='JPEG',quality=38,optimize=True)
 encoded=base64.b64encode(compressed.getvalue()).decode('ascii')
 chunks=[encoded[i:i+3500] for i in range(0,len(encoded),3500)]
-if len(chunks)>8:
+if len(chunks)>5:
     print('::warning::Screen preview too large for CI annotations')
 else:
     for index,part in enumerate(chunks,1):

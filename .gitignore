@@ -21,6 +21,7 @@ run/
 runserver*/
 options.txt
 .tmp-screen/
+.venv/
 runs/
 logs/
 

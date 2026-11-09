@@ -130,7 +130,7 @@ jobs:
             python3 -m pip install --quiet pillow > capture-install.log 2>&1 || true
             for attempt in $(seq 1 170); do
               if [ -f capture-now ]; then
-                sleep 0.2
+                sleep 2
                 python3 scripts/capture_client.py > capture.log 2>&1 || true
                 break
               fi
