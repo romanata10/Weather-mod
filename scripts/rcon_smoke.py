@@ -110,8 +110,12 @@ with connection as conn:
         raise AssertionError("Squall never applied a gust to the test entity")
     # A dedicated server with zero players may suspend entity movement even in a
     # forced chunk. Verify horizontal velocity, not apparent displacement.
-    if abs(velocity[0])+abs(velocity[2])<.01:
-        raise AssertionError("Squall did not impart horizontal velocity")
+    # Sampled Motion may be zero between gusts; previous/current positions
+    # also prove the gust displaced the mob while the server was ticking it.
+    horizontal_motion=abs(velocity[0])+abs(velocity[2])
+    horizontal_displacement=abs(before[0]-after[0])+abs(before[2]-after[2])
+    if horizontal_motion<.01 and horizontal_displacement<.01:
+        raise AssertionError("Squall neither imparted horizontal velocity nor moved the mob")
     send(conn,50,2,"kill @e[type=minecraft:pig]")
     check(41, "time set midnight", "Set the time")
     print("storm status before sprite:",send(conn,43,2,"execute positioned 0 100 0 run ew status"),flush=True)
