@@ -67,9 +67,12 @@ for attempt in range(70):
                         if 'ExtremeWeather dust volume rendered with world GUI visible' in open('client-smoke.log',errors='ignore').read():
                             command(sock,92,2,'execute as @a at @s run tp @s ~ 85 ~ 0 0')
                             command(sock,80,2,'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run ew disaster dust_devil')
-                            for _ in range(8):
-                                command(sock,93,2,'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
-                                time.sleep(.35)
+                            # Let all readiness-test particles expire before
+                            # capturing ONE fresh raymarched billboard. Otherwise
+                            # eight stacked quads fake a denser funnel than users see.
+                            time.sleep(1.5)
+                            solo=command(sock,93,2,'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
+                            print('single diagnostic volume:',solo,flush=True)
                             print('world GUI visible and volume renderer ran',flush=True)
                             break
                     except OSError:
