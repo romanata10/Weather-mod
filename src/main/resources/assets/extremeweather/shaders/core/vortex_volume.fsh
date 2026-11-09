@@ -3,6 +3,7 @@
 // PMWeather shaders and textures are NOT copied or overridden here.
 in vec2 volumeUV;
 in vec4 volumeTint;
+uniform float GameTime;
 out vec4 fragColor;
 
 float hash31(vec3 p) {
@@ -13,7 +14,7 @@ float hash31(vec3 p) {
 float density(vec3 p) {
     float height = clamp(p.y, 0.0, 1.0);
     float radius = mix(0.10, 0.75, pow(height, 1.25));
-    float swirl = 0.09 * sin(13.0 * height + atan(p.z, p.x) * 4.0);
+    float swirl = 0.09 * sin(13.0 * height + atan(p.z, p.x) * 4.0 + GameTime * 125.0);
     float distanceToAxis = length(p.xz);
     float shell = 1.0 - smoothstep(0.0, 0.14, abs(distanceToAxis - radius + swirl));
     float innerMist = 0.25 * (1.0 - smoothstep(0.0, radius, distanceToAxis));
