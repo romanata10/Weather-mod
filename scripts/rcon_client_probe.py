@@ -25,6 +25,7 @@ for attempt in range(100):
             sock.settimeout(5)
             if command(sock,1,3,sys.argv[1]) is None:raise ConnectionError('RCON auth failed')
             listing=command(sock,2,2,'list')
+            if attempt%12==0:print('server player list:',listing,flush=True)
             if 'There are 1 of a max' in listing or 'There are 2 of a max' in listing:
                 print('joined client:',listing,flush=True)
                 particle=command(sock,3,2,'execute at @a run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')

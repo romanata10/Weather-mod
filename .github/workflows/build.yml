@@ -149,7 +149,13 @@ jobs:
               while IFS= read -r LINE; do
                 LINE=${LINE//'%'/'%25'}; LINE=${LINE//$'\r'/'%0D'}; LINE=${LINE//$'\n'/'%0A'}
                 echo "::notice::$FILE $LINE"
-              done < <(grep -viE 'ALSA lib|OpenAL|pa_alsa|pulseaudio' "$FILE" | tail -18 || true)
+              done < <(grep -viE 'ALSA lib|OpenAL|pa_alsa|pulseaudio' "$FILE" | tail -12 || true)
+              if [ "$FILE" = client-smoke.log ]; then
+                while IFS= read -r LINE; do
+                  LINE=${LINE//'%'/'%25'}; LINE=${LINE//$'\r'/'%0D'}; LINE=${LINE//$'\n'/'%0A'}
+                  echo "::notice::client-startup $LINE"
+                done < <(grep -Ei '(quick.?play|connect|join|extremeweather|failed|exception|server address)' "$FILE" | grep -vi 'ALSA lib' | head -22 || true)
+              fi
             fi
           done
       - uses: actions/upload-artifact@v4
