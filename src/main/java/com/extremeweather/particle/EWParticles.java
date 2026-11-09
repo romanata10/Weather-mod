@@ -11,6 +11,8 @@ import net.minecraft.core.registries.Registries;
 public final class EWParticles {
     public static final DeferredRegister<ParticleType<?>> PARTICLES=DeferredRegister.create(Registries.PARTICLE_TYPE,ExtremeWeather.MODID);
     public static final DeferredHolder<ParticleType<?>,SimpleParticleType> DUST=PARTICLES.register("dust_whirl",()->new SimpleParticleType(false));
+    // One shader-drawn volumetric quad per dust devil, not an atlas sprite list.
+    public static final DeferredHolder<ParticleType<?>,SimpleParticleType> DUST_VOLUME=PARTICLES.register("dust_volume",()->new SimpleParticleType(false));
     public static final DeferredHolder<ParticleType<?>,SimpleParticleType> LAND=PARTICLES.register("landspout",()->new SimpleParticleType(false));
     public static final DeferredHolder<ParticleType<?>,SimpleParticleType> WATER=PARTICLES.register("waterspout",()->new SimpleParticleType(false));
     public static final DeferredHolder<ParticleType<?>,SimpleParticleType> SNOW=PARTICLES.register("snow_whirl",()->new SimpleParticleType(false));

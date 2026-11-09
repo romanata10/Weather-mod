@@ -356,7 +356,13 @@ public final class DisasterEngine {
                 BlockPos surface=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,BlockPos.containing(pos));
                 pos=new Vec3(pos.x,surface.getY()+.15,pos.z);
             }
-            for(int i=0;i<9;i++) {
+            if(kind==Kind.DUST_DEVIL) {
+                // A single world-space density field, integrated by the custom
+                // shader on the client. No second visible dust particle funnel.
+                if(clock%20==0)for(ServerPlayer viewer:level.players())
+                    if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
+                        level.sendParticles(viewer,EWParticles.DUST_VOLUME.get(),true,pos.x,pos.y,pos.z,1,0,0,0,0);
+            } else for(int i=0;i<9;i++) {
                 double h=level.random.nextDouble()*16,phase=clock*.25+h*.5+i*2.4;
                 double r=.8+h*.1;
                 var particle=kind==Kind.WATERSPOUT?EWParticles.WATER.get():kind==Kind.SNOW_WHIRL?EWParticles.SNOW.get():kind==Kind.FIRE_WHIRL?ModParticleTypes.FLAME.get():kind==Kind.DUST_DEVIL?EWParticles.DUST.get():EWParticles.LAND.get();
