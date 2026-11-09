@@ -19,6 +19,8 @@ bin/
 # Minecraft run directories
 run/
 runserver*/
+options.txt
+.tmp-screen/
 runs/
 logs/
 
