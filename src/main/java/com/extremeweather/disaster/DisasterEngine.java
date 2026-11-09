@@ -31,6 +31,7 @@ import java.util.*;
 public final class DisasterEngine {
     private final List<Whirl> whirls=new ArrayList<>();
     private final List<HailField> hailFields=new ArrayList<>();
+    private final List<SquallField> squalls=new ArrayList<>();
     private final List<Whirlpool> whirlpools=new ArrayList<>();
     private final SkyPhenomena sky=new SkyPhenomena();
     private final com.extremeweather.vortex.ManualVortices manual=new com.extremeweather.vortex.ManualVortices();
@@ -48,6 +49,12 @@ public final class DisasterEngine {
             else field.tick(level);
         }
         if(ticks%20==0)com.extremeweather.ocean.SurgeData.get(level).tick(level);
+        if(ticks%10==0)for(Iterator<SquallField> it=squalls.iterator();it.hasNext();) {
+            SquallField squall=it.next();
+            if(++squall.age>240 || squall.storm.dead || !level.hasChunkAt(BlockPos.containing(squall.storm.position)))
+                it.remove();
+            else squall.tick(level);
+        }
         if(ticks%5==0)for(Iterator<Whirlpool> it=whirlpools.iterator();it.hasNext();) {
             Whirlpool vortex=it.next();
             if(++vortex.age>240 || !level.hasChunkAt(BlockPos.containing(vortex.center)) ||
@@ -115,7 +122,8 @@ public final class DisasterEngine {
         return manual.spawn(level,pos,shape,ef);
     }
     public void clearManual(){manual.clear();}
-    public void clearAll(){manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();sky.clear();tropical.clear();lastStorm.clear();}
+    public void clearAll(){manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
+    public int activeSqualls(){return squalls.size();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
     public EffectResult trigger(ServerLevel level,Vec3 position,String effect) {
@@ -147,8 +155,11 @@ public final class DisasterEngine {
                 level.sendParticles(ParticleTypes.ELECTRIC_SPARK,position.x,position.y+12,position.z,90,6,12,6,.08);
             }
             case "squall" -> {
-                if(com.extremeweather.compat.PMStormBridge.spawn(level,dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL,position,.7f,1)==null)
-                    return new EffectResult(false,"PMWeather cannot start a squall here or storm limit reached");
+                if(squalls.size()>=3)return new EffectResult(false,"Active squall limit reached (3 per dimension)");
+                var storm=com.extremeweather.compat.PMStormBridge.spawn(level,
+                    dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL,position,.7f,1);
+                if(storm==null)return new EffectResult(false,"PMWeather cannot start a squall here or storm limit reached");
+                squalls.add(new SquallField(storm));
             }
             case "dust_devil", "waterspout", "landspout", "snow_whirl" -> {
                 if(whirls.size()>=12)return new EffectResult(false,"Small vortex limit reached (12 per dimension)");
@@ -188,6 +199,31 @@ public final class DisasterEngine {
             default -> {return new EffectResult(false,"Unknown disaster");}
         }
         return new EffectResult(true,"Started "+effect+" at "+pos.toShortString());
+    }
+    /** Real PMWeather squall cloud, coupled to server-authoritative gusts.
+     * The PM storm remains the only cloud, so no decorative particle cloud is added. */
+    private static final class SquallField {
+        final dev.protomanly.pmweather.weather.Storm storm;int age;
+        SquallField(dev.protomanly.pmweather.weather.Storm storm){this.storm=storm;}
+        void tick(ServerLevel level) {
+            Vec3 center=storm.position;
+            for(ServerPlayer viewer:level.players()) {
+                double distance=Math.hypot(viewer.getX()-center.x,viewer.getZ()-center.z);
+                if(distance>90 || !level.hasChunkAt(viewer.blockPosition()))continue;
+                Vec3 wind=WindEngine.getWind(viewer.blockPosition(),level);
+                double length=Math.max(.001,wind.horizontalDistance());
+                // PM wind determines heading; a calm cell still has squall gusts.
+                double x=length<.04?Math.cos(storm.tickCount*.08):wind.x/length;
+                double z=length<.04?Math.sin(storm.tickCount*.08):wind.z/length;
+                for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,viewer.getBoundingBox().inflate(12))) {
+                    if(entity instanceof ServerPlayer player && (player.isCreative() || player.isSpectator()))continue;
+                    if(Math.hypot(entity.getX()-center.x,entity.getZ()-center.z)>90)continue;
+                    entity.push(x*.18,.018,z*.18);entity.hurtMarked=true;
+                    if(age%4==0 && level.canSeeSky(entity.blockPosition()) && level.random.nextInt(5)==0)
+                        entity.hurt(level.damageSources().generic(),1f);
+                }
+            }
+        }
     }
     /** Surface whirlpool: PM foam and authoritative water-only entity movement.
      * It does not claim to be a PMWeather-native fluid renderer. */
