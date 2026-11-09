@@ -108,7 +108,7 @@ jobs:
           mkdir -p runserver-visual
           RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > runserver-visual/eula.txt
-          printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\n' "$RCON_PASSWORD" > runserver-visual/server.properties
+          printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\nallow-flight=true\n' "$RCON_PASSWORD" > runserver-visual/server.properties
           timeout 300s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" "${CLIENT_PID:-}" 2>/dev/null || true' EXIT
