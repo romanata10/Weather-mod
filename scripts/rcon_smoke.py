@@ -53,7 +53,8 @@ with connection as conn:
 
     check(8, "ew help", "/ew storm")
     check(9, "forceload add 0 0", "force")
-    check(10, "weather clear", "clear")
+    check(10, "weather clear 100000", "clear")
+    send(conn, 100, 2, "gamerule doWeatherCycle false")
     print("prepare wildfire fuel:",send(conn,11,2,"setblock 0 70 0 minecraft:grass_block"),flush=True)
     check(54, "execute if block 0 70 0 minecraft:grass_block", "passed")
     send(conn, 12, 2, "setblock 0 71 0 minecraft:air")  # air may already exist
