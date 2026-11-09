@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           JAR=$(find "$HOME/.gradle" -type f -name 'protomanlys-weather-*.jar' | head -1)
-          for CLASS in dev.protomanly.pmweather.weather.storms.StormTypes dev.protomanly.pmweather.weather.Storm; do
+          for CLASS in dev.protomanly.pmweather.weather.storms.StormTypes dev.protomanly.pmweather.weather.Storm dev.protomanly.pmweather.weather.Vorticy dev.protomanly.pmweather.weather.storms.StormType dev.protomanly.pmweather.weather.Lightning; do
             FIELDS=$(javap -public -classpath "$JAR" "$CLASS" 2>&1 | head -140)
             FIELDS=${FIELDS//$'\n'/'%0A'}
             echo "::notice::$CLASS%0A$FIELDS"
