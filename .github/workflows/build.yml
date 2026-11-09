@@ -17,10 +17,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.8'
-          cache-disabled: true
+      - name: Install Gradle 8.8 from pinned GitHub release
+        shell: bash
+        run: |
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \
+            'https://github.com/gradle/gradle-distributions/releases/download/v8.8.0/gradle-8.8-bin.zip' \
+            --output /tmp/gradle-8.8-bin.zip
+          unzip -q /tmp/gradle-8.8-bin.zip -d /tmp
+          echo /tmp/gradle-8.8/bin >> "$GITHUB_PATH"
+          /tmp/gradle-8.8/bin/gradle --version
       - name: Build JAR
         shell: bash
         run: |
