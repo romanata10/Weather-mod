@@ -53,7 +53,7 @@ public final class WildfireManager {
         if (level.getBlockState(ground).isAir()) ground=ground.below();
         BlockState state=level.getBlockState(ground);
         if (!isFuel(state)) return false;
-        if (burning.putIfAbsent(ground,0)==null && level.getBlockState(ground.above()).isAir())
+        if (burning.putIfAbsent(ground,(int)level.getGameTime())==null && level.getBlockState(ground.above()).isAir())
             level.setBlock(ground.above(),Blocks.FIRE.defaultBlockState(),3);
         return true;
     }
@@ -73,12 +73,14 @@ public final class WildfireManager {
             BlockPos p=positions.get((start+i)%size);
             Integer previous=burning.get(p);
             if(previous==null)continue;
-            int age=previous+10;
+            // Budgeted processing can skip a cell for many ticks. Store the
+            // ignition game tick, so growth/conversion uses elapsed time rather
+            // than the number of turns this cell happened to be selected.
+            int age=(int)(level.getGameTime()-previous);
             if(!level.hasChunkAt(p) || level.isRainingAt(p.above()) || level.getFluidState(p).isSource() || age>700) {
                 burning.remove(p);continue;
             }
-            burning.put(p,age);
-            if (age>130 && age%40==0) {
+            if (age>130 && clock%40==0) {
                 // Adjacent fuels spread deterministically instead of missing every
                 // neighbouring tree with three random probes. Budget remains capped.
                 for(Direction direction:Direction.Plane.HORIZONTAL) {
@@ -90,7 +92,7 @@ public final class WildfireManager {
                     if(level.hasChunkAt(n) && isFuel(level.getBlockState(n)) && !burning.containsKey(n))spread.add(n);
                 }
             }
-            if(age>200 && (age%90==0 || age>650)) {
+            if(age>270) {
                 BlockState old=level.getBlockState(p);
                 if(old.is(Blocks.GRASS_BLOCK) || old.is(BlockTags.DIRT) || old.is(Blocks.MOSS_BLOCK))
                     level.setBlock(p,(old.is(Blocks.GRASS_BLOCK)?EWBlocks.CHARRED_GRASS:EWBlocks.SCORCHED_EARTH).get().defaultBlockState(),3);
