@@ -34,12 +34,7 @@ void main() {
         light += (1.0 - accumulated) * d * (0.5 + 0.5 * depth);
         accumulated += (1.0 - accumulated) * d;
     }
-    // Probe: a full opaque quad rules out density/alpha as the missing silhouette.
-    fragColor = vec4(1.0, 0.0, 0.0, 1.0);
-    return;
     if (accumulated < 0.025) discard;
     vec3 shaded = volumeTint.rgb * mix(0.42, 1.1, clamp(light * 3.0, 0.0, 1.0));
-    // Diagnostic silhouette: exaggerated contrast until a joined-client
-    // framebuffer confirms that the custom shader reaches the screen.
-    fragColor = vec4(0.88, 0.25, 0.06, clamp(accumulated * 2.0 * volumeTint.a, 0.0, 0.94));
+    fragColor = vec4(shaded, clamp(accumulated * volumeTint.a, 0.0, 0.94));
 }
