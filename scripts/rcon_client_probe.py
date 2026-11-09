@@ -28,6 +28,11 @@ for attempt in range(70):
             if attempt%12==0:print('server player list:',listing,flush=True)
             if 'There are 1 of a max' in listing or 'There are 2 of a max' in listing:
                 print('joined client:',listing,flush=True)
+                # Put the camera above terrain, facing a clear horizontal view.
+                # Otherwise an arbitrary spawn may hide the vortex behind foliage.
+                command(sock,90,2,'effect give @a minecraft:slow_falling 120 10 true')
+                command(sock,91,2,'execute as @a at @s run tp @s ~ 145 ~ 0 0')
+                time.sleep(2)
                 particle=command(sock,3,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
                 print('direct volume spawn:',particle,flush=True)
                 disaster=command(sock,4,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run ew disaster dust_devil')
