@@ -28,9 +28,9 @@ for attempt in range(70):
             if attempt%12==0:print('server player list:',listing,flush=True)
             if 'There are 1 of a max' in listing or 'There are 2 of a max' in listing:
                 print('joined client:',listing,flush=True)
-                particle=command(sock,3,2,'execute at @a run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
+                particle=command(sock,3,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
                 print('direct volume spawn:',particle,flush=True)
-                disaster=command(sock,4,2,'execute as @a at @s run ew disaster dust_devil')
+                disaster=command(sock,4,2,'execute as @a at @s anchored eyes positioned ^ ^-1 ^16 run ew disaster dust_devil')
                 print('dust devil command:',disaster,flush=True)
                 if 'Started dust_devil' not in disaster:raise AssertionError('dust devil refused client position')
                 break
