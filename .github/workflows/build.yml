@@ -124,7 +124,7 @@ jobs:
             GAME=$!
             python3 -m pip install --quiet pillow > capture-install.log 2>&1 || true
             sleep 75
-            python3 -c "from PIL import ImageGrab; import os; ImageGrab.grab(xdisplay=os.environ["DISPLAY"]).save("client-screen.png")" > capture.log 2>&1 || true
+            python3 scripts/capture_client.py > capture.log 2>&1 || true
             wait "$GAME"
           ' &
           CLIENT_PID=$!
