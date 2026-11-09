@@ -97,7 +97,7 @@ jobs:
             exit 1
           }
           cat rcon-smoke.log
-      - name: In-world raymarch client probe (visual appearance still unreviewed)
+      - name: Optional in-world raymarch client probe (must connect to count)
         continue-on-error: true
         shell: bash
         run: |
