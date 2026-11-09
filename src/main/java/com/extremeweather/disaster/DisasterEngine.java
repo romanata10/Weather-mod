@@ -129,6 +129,8 @@ public final class DisasterEngine {
     public void clearAll(){manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
     public int activeSqualls(){return squalls.size();}
     public long squallPushes(){return squalls.stream().mapToLong(field->field.pushes).sum();}
+    public int activeCyclones(){return tropical.count();}
+    public double weakestCyclonePower(){return tropical.weakestPower();}
     public int activeSmallVortices(){return whirls.size();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
@@ -180,14 +182,16 @@ public final class DisasterEngine {
                 whirls.add(new Whirl(position,kind,360));
             }
             case "hurricane", "typhoon", "cyclone" -> {
-                if(com.extremeweather.compat.PMStormBridge.cyclone(level,position)==null)
-                    return new EffectResult(false,"PMWeather cannot start a cyclone here or storm limit reached");
+                if(!tropical.canTrack(level,position))
+                    return new EffectResult(false,"Cyclone tracking limit reached (2 per dimension)");
+                var storm=com.extremeweather.compat.PMStormBridge.cyclone(level,position);
+                if(storm==null)return new EffectResult(false,"PMWeather cannot start a cyclone here or storm limit reached");
                 var basin=switch(effect) {
                     case "typhoon" -> com.extremeweather.ocean.TropicalSystems.Basin.TYPHOON;
                     case "cyclone" -> com.extremeweather.ocean.TropicalSystems.Basin.CYCLONE;
                     default -> com.extremeweather.ocean.TropicalSystems.Basin.HURRICANE;
                 };
-                tropical.spawn(level,position,basin);
+                tropical.track(level,storm,basin);
             }
             case "fire_whirl" -> {
                 if(com.extremeweather.compat.PMStormBridge.fireWhirl(level,position)==null)

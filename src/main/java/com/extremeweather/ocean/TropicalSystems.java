@@ -1,6 +1,8 @@
 package com.extremeweather.ocean;
 
 import dev.protomanly.pmweather.weather.WindEngine;
+import dev.protomanly.pmweather.weather.Storm;
+import dev.protomanly.pmweather.weather.WeatherHandlerServer;
 import dev.protomanly.pmweather.particle.ModParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -19,10 +21,16 @@ public final class TropicalSystems {
     private final List<System> systems=new ArrayList<>();
     private final List<Pulse> pulses=new ArrayList<>();
     private long ticks;
-    public boolean spawn(ServerLevel level,Vec3 center,Basin basin) {
-        if(systems.size()>=2 || !level.hasChunkAt(BlockPos.containing(center)))return false;
-        systems.add(new System(center,basin,1200));return true;
+    public boolean canTrack(ServerLevel level,Vec3 center) {
+        return systems.size()<2 && level.hasChunkAt(BlockPos.containing(center));
     }
+    /** Track the SAME native PMWeather storm that the command created. */
+    public boolean track(ServerLevel level,Storm storm,Basin basin) {
+        if(storm==null || !canTrack(level,storm.position))return false;
+        systems.add(new System(storm,basin,1200));return true;
+    }
+    public int count(){return systems.size();}
+    public double weakestPower(){return systems.stream().mapToDouble(s->s.power).min().orElse(1);}
     public boolean spawnPulse(ServerLevel level,Vec3 center) {
         if(pulses.size()>=2 || !level.hasChunkAt(BlockPos.containing(center)))return false;
         pulses.add(new Pulse(center));return true;
@@ -39,11 +47,23 @@ public final class TropicalSystems {
         }
         for(Iterator<System> it=systems.iterator();it.hasNext();) {
             System system=it.next();
-            if(++system.age>system.life || !level.hasChunkAt(BlockPos.containing(system.center))) {it.remove();continue;}
+            system.center=system.storm.position;
+            if(++system.age>system.life || system.storm.dead || !level.hasChunkAt(BlockPos.containing(system.center))) {
+                it.remove();continue;
+            }
             Vec3 wind=WindEngine.getWind(BlockPos.containing(system.center),level);
             boolean ocean=level.getBiome(BlockPos.containing(system.center)).is(BiomeTags.IS_OCEAN);
-            if(!ocean)system.power=Math.max(.15,system.power-.0025); // decay after landfall
-            system.center=system.center.add(wind.x*.6,0,wind.z*.6);
+            if(ocean)system.seenOcean=true;
+            else {
+                system.power=Math.max(.15,system.power-.012); // decay after landfall
+                if(system.seenOcean && !system.landfallRolled) {
+                    system.landfallRolled=true;
+                    // Rare, independent native PM supercell near a landfalling cyclone.
+                    if(level.random.nextInt(5)==0)
+                        com.extremeweather.compat.PMStormBridge.supercell(level,system.center.add(36,0,24));
+                }
+                if(ticks%40==0)system.weakenNativeStorm();
+            }
             system.render(level,ticks);
             if(ticks%40==0)system.gust(level,wind);
             // A very rare pressure-driven meteotsunami, not a seismic earthquake.
@@ -62,8 +82,9 @@ public final class TropicalSystems {
             Basin basin=Basin.values()[level.random.nextInt(Basin.values().length)];
             // Add rain bands around PMWeather's native cyclone rather than inventing
             // a second cloud deck independent of PM's storm engine.
-            if(com.extremeweather.compat.PMStormBridge.cyclone(level,storm.position)==null)continue;
-            systems.add(new System(storm.position,basin,500+level.random.nextInt(1100)));
+            Storm cyclone=com.extremeweather.compat.PMStormBridge.cyclone(level,storm.position);
+            if(cyclone==null)continue;
+            systems.add(new System(cyclone,basin,500+level.random.nextInt(1100)));
             break;
         }
     }
@@ -95,8 +116,18 @@ public final class TropicalSystems {
         }
     }
     private static final class System {
-        Vec3 center;final Basin basin;final int life;int age;double power=1;
-        System(Vec3 center,Basin basin,int life){this.center=center;this.basin=basin;this.life=life;}
+        Vec3 center;final Storm storm;final Basin basin;final int life;
+        int age;double power=1;boolean seenOcean,landfallRolled;
+        System(Storm storm,Basin basin,int life){
+            this.storm=storm;this.center=storm.position;this.basin=basin;this.life=life;
+        }
+        void weakenNativeStorm() {
+            // Reduce the actual PMWeather wind fields, not just addon gust strength.
+            storm.cycloneWindspeed*=.95f;
+            storm.smoothWindspeed*=.95f;
+            if(storm.maxWindspeed>20)storm.maxWindspeed=Math.max(20,(int)(storm.maxWindspeed*.95));
+            if(storm.weatherHandler instanceof WeatherHandlerServer handler)handler.syncStormUpdate(storm);
+        }
         void render(ServerLevel level,long ticks) {
             // Thin spiral arms: PMWeather still draws the actual cloud deck.
             for(int arm=0;arm<4;arm++)for(int sample=0;sample<8;sample++) {

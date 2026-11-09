@@ -112,6 +112,7 @@ with connection as conn:
     check(42, "ew disaster sprite 0 100 0", "Started sprite")
     check(31, "ew clear all", "PMWeather storms and addon weather cleared")
     check(32, "ew disaster hurricane 0 100 0", "Started hurricane")
+    check(61, "execute positioned 0 100 0 run ew status", "active cyclone systems: 1")
     check(33, "ew clear all", "PMWeather storms and addon weather cleared")
     print("prepare water:",send(conn,34,2,"setblock 2 63 0 minecraft:water"),flush=True)
     check(55, "execute if block 2 63 0 minecraft:water", "passed")
