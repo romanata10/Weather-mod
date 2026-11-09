@@ -6,19 +6,27 @@ in vec4 volumeTint;
 uniform float GameTime;
 out vec4 fragColor;
 
-float hash31(vec3 p) {
-    p = fract(p * 0.1031);
-    p += dot(p, p.yzx + 19.19);
-    return fract((p.x + p.y) * p.z);
+// Continuous angular/height variation, avoiding the old cubic voxel specks.
+float hash21(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float noise21(vec2 p) {
+    vec2 cell = floor(p), blend = fract(p);
+    blend = blend * blend * (3.0 - 2.0 * blend);
+    return mix(mix(hash21(cell), hash21(cell + vec2(1, 0)), blend.x),
+               mix(hash21(cell + vec2(0, 1)), hash21(cell + vec2(1, 1)), blend.x), blend.y);
 }
 float density(vec3 p) {
     float height = clamp(p.y, 0.0, 1.0);
     float radius = mix(0.10, 0.75, pow(height, 1.25));
-    float swirl = 0.09 * sin(13.0 * height + atan(p.z, p.x) * 4.0 + GameTime * 125.0);
+    float angle = atan(p.z, p.x);
+    float rotation = angle * 4.0 + height * 14.0 + GameTime * 125.0;
+    float gust = noise21(vec2(rotation * 0.8, height * 10.0 + GameTime * 35.0));
+    float swirl = 0.07 * sin(rotation) + 0.12 * (gust - 0.5);
     float distanceToAxis = length(p.xz);
-    float shell = 1.0 - smoothstep(0.0, 0.14, abs(distanceToAxis - radius + swirl));
-    float innerMist = 0.25 * (1.0 - smoothstep(0.0, radius, distanceToAxis));
-    float breakup = 0.65 + 0.35 * hash31(floor(p * 24.0));
+    float shell = 1.0 - smoothstep(0.03, 0.19, abs(distanceToAxis - radius + swirl));
+    float innerMist = 0.18 * (1.0 - smoothstep(0.0, radius, distanceToAxis));
+    float breakup = mix(0.34, 1.0, noise21(vec2(rotation * 1.5, height * 21.0 - GameTime * 20.0)));
     return (shell + innerMist) * breakup * smoothstep(0.0, 0.1, height)
            * (1.0 - smoothstep(0.88, 1.0, height));
 }
