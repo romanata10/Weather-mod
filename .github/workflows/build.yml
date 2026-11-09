@@ -121,7 +121,9 @@ jobs:
           if [ "$READY" -ne 1 ]; then tail -65 visual-server.log; exit 1; fi
           # A fresh client otherwise pauses on the first-launch accessibility
           # screen BEFORE Quick Play attempts to contact our dedicated server.
-          printf 'version:3955\nnarrator:0\nonboardAccessibility:false\nskipMultiplayerWarning:true\n' > options.txt
+          mkdir -p run
+          printf 'version:3955\nnarrator:0\nonboardAccessibility:false\nskipMultiplayerWarning:true\n' > run/options.txt
+          cp run/options.txt options.txt
           timeout 220s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
             gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &
             GAME=$!
