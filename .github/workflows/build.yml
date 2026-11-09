@@ -122,9 +122,10 @@ jobs:
           timeout 220s xvfb-run -a -s '-screen 0 1280x720x24' \
             gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &
           CLIENT_PID=$!
-          python3 scripts/rcon_client_probe.py "$RCON_PASSWORD" || {
-            tail -55 client-smoke.log;tail -30 visual-server.log;exit 1;
+          python3 scripts/rcon_client_probe.py "$RCON_PASSWORD" > probe.log 2>&1 || {
+            cat probe.log;tail -55 client-smoke.log;tail -30 visual-server.log;exit 1;
           }
+          cat probe.log
           FOUND=0
           for attempt in $(seq 1 30); do
             if grep -Fq 'ExtremeWeather dust volume rendered in-world' client-smoke.log; then FOUND=1; break; fi
@@ -141,14 +142,14 @@ jobs:
         if: always()
         shell: bash
         run: |
-          for FILE in client-smoke.log visual-server.log; do
+          for FILE in probe.log client-smoke.log visual-server.log; do
             if [ -f "$FILE" ]; then
               echo "Latest $FILE lines:"
               tail -28 "$FILE"
               while IFS= read -r LINE; do
                 LINE=${LINE//'%'/'%25'}; LINE=${LINE//$'\r'/'%0D'}; LINE=${LINE//$'\n'/'%0A'}
                 echo "::notice::$FILE $LINE"
-              done < <(grep -Ei '(ExtremeWeather|quick.?play|joined the game|connecting|failed|exception|error|done \(|rcon)' "$FILE" | tail -15 || true)
+              done < <(grep -viE 'ALSA lib|OpenAL|pa_alsa|pulseaudio' "$FILE" | tail -18 || true)
             fi
           done
       - uses: actions/upload-artifact@v4
