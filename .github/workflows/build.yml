@@ -162,12 +162,11 @@ jobs:
           fi
           if [ -f client-screen.png ]; then
             echo "::notice::Captured headless client screen ($(wc -c < client-screen.png) bytes)"
+            python3 scripts/annotate_client_screen.py
             if command -v tesseract >/dev/null; then
               TEXT=$(tesseract client-screen.png stdout 2>/dev/null | head -35 || true)
               TEXT=${TEXT//$'\n'/'%0A'}
               echo "::notice::Client screen OCR%0A$TEXT"
-            else
-              echo '::notice::tesseract unavailable; screenshot uploaded as CI artifact'
             fi
           else
             echo "::warning::Client screen capture unavailable: $(cat capture.log 2>/dev/null | head -3)"
