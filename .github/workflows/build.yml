@@ -49,6 +49,18 @@ jobs:
           print('PMWeather particle texture resource IDs validated against dependency JAR')
           PYVALIDATE
           }
+      - name: Inspect PMWeather storm types and funnel render extension points
+        shell: bash
+        run: |
+          JAR=$(find "$HOME/.gradle" -type f -name 'protomanlys-weather-*.jar' | head -1)
+          for CLASS in dev.protomanly.pmweather.weather.storms.StormTypes dev.protomanly.pmweather.weather.Storm; do
+            FIELDS=$(javap -public -classpath "$JAR" "$CLASS" 2>&1 | head -140)
+            FIELDS=${FIELDS//$'\n'/'%0A'}
+            echo "::notice::$CLASS%0A$FIELDS"
+          done
+          CLASSES=$(jar tf "$JAR" | grep -Ei '(tornado|vortex|raymarch|cloudrender|lightning)' | head -100)
+          CLASSES=${CLASSES//$'\n'/'%0A'}
+          echo "::notice::render-related classes%0A$CLASSES"
       - name: Dedicated server and PMWeather command integration test
         shell: bash
         run: |
