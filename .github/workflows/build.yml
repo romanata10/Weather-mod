@@ -148,7 +148,18 @@ jobs:
             echo '::warning::Real client did not report drawing the dust volume'
             exit 1
           fi
-          echo 'Client renderer executed for the raymarched dust volume; visual quality still requires a human review.'
+          echo '::notice::Client DustVolumeParticle.render executed in a joined Minecraft world.'
+          # Keep Xvfb alive until the framebuffer capture at ~85 seconds.
+          for attempt in $(seq 1 90); do
+            if [ -f client-screen.png ]; then break; fi
+            if ! kill -0 "$CLIENT_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ ! -f client-screen.png ]; then
+            echo '::warning::In-world render called, but framebuffer capture failed'
+            exit 1
+          fi
+          echo 'Client renderer executed and framebuffer captured; appearance still needs review.'
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash
@@ -158,6 +169,9 @@ jobs:
             echo "::notice::RCON probe%0A$DATA"
           fi
           if [ -f client-smoke.log ]; then
+            if grep -Fq 'ExtremeWeather dust volume rendered in-world' client-smoke.log; then
+              echo '::notice::Real Minecraft client called DustVolumeParticle.render in-world'
+            fi
             DATA=$(grep -Ei '(quick.?play|connect|join|extremeweather|failed|exception|server address|asset|missing)' client-smoke.log | grep -vi 'ALSA lib' | tail -16 || true)
             DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Client connection/shader events%0A$DATA"
