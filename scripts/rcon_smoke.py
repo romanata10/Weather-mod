@@ -86,6 +86,20 @@ with connection as conn:
     check(29, "ew disaster hail 0 70 0", "Started hail")
     check(30, "ew disaster squall 0 100 0", "Started squall")
     check(46, "execute positioned 0 100 0 run ew status", "active squall gusts: 1")
+    check(47, "summon minecraft:pig 0 74 0 {NoAI:1b,NoGravity:1b,Invulnerable:1b,PersistenceRequired:1b}", "Summoned")
+    import re
+    def pig_position(index):
+        reply=send(conn,index,2,"data get entity @e[type=minecraft:pig,limit=1,sort=nearest] Pos")
+        print("squall pig position:",reply,flush=True)
+        data=re.search(r"\[([^]]+)\]",reply)
+        if not data:raise AssertionError("Cannot inspect squall test entity")
+        return [float(value.rstrip('df')) for value in data.group(1).split(', ')]
+    before=pig_position(48)
+    time.sleep(2)
+    after=pig_position(49)
+    if abs(before[0]-after[0])+abs(before[2]-after[2])<.05:
+        raise AssertionError("Squall did not physically move an entity on the dedicated server")
+    send(conn,50,2,"kill @e[type=minecraft:pig]")
     check(41, "time set midnight", "Set the time")
     print("storm status before sprite:",send(conn,43,2,"execute positioned 0 100 0 run ew status"),flush=True)
     check(42, "ew disaster sprite 0 100 0", "Started sprite")
