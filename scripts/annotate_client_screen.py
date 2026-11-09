@@ -12,7 +12,7 @@ img.thumbnail((640,360))
 compressed=BytesIO()
 img.save(compressed,format='JPEG',quality=58,optimize=True)
 encoded=base64.b64encode(compressed.getvalue()).decode('ascii')
-chunks=[encoded[i:i+12000] for i in range(0,len(encoded),12000)]
+chunks=[encoded[i:i+3500] for i in range(0,len(encoded),3500)]
 if len(chunks)>8:
     print('::warning::Screen preview too large for CI annotations')
 else:
