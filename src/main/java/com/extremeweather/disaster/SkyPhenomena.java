@@ -42,13 +42,17 @@ public final class SkyPhenomena {
      * reference for crown-and-tendril geometry, not an asset copied into the mod. */
     public boolean sprite(ServerLevel level, BlockPos origin) {
         if(level.isDay())return false;
-        var storms=net.nullved.pmweatherapi.storm.NearbyStorms.get(level).stormsNearBlock(origin,220);
-        if(storms.isEmpty())return false;
-        var cloud=storms.get(0);
+        // PMWeather places cloud centers high above the terrain: a spherical
+        // range check against the player's Y rejects storms directly overhead.
+        var cloud=net.nullved.pmweatherapi.storm.NearbyStorms.get(level)
+            .stormsNearBlock(origin,2048).stream()
+            .filter(storm->Math.hypot(storm.position.x-origin.getX(),storm.position.z-origin.getZ())<220)
+            .min(java.util.Comparator.comparingDouble(storm->Math.hypot(storm.position.x-origin.getX(),storm.position.z-origin.getZ())))
+            .orElse(null);
+        if(cloud==null)return false;
         double x0=cloud.position.x,z0=cloud.position.z;
-        double crownY=Math.min(level.getMaxBuildHeight()-18,Math.max(170,cloud.position.y+82));
-        if(crownY<cloud.position.y+25)return false;
-        Vec3 focus=new Vec3(x0,cloud.position.y,z0);
+        double crownY=Math.max(170,cloud.position.y+82);
+        Vec3 focus=Vec3.atCenterOf(origin);
         // Diffuse crimson upper glow and seven crooked, branching downward filaments.
         var red=new DustParticleOptions(new Vector3f(1f,.07f,.11f),2f);
         var pink=new DustParticleOptions(new Vector3f(1f,.27f,.20f),1.25f);
