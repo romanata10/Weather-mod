@@ -23,6 +23,9 @@ public final class VolumeShader {
     public static void register(RegisterShadersEvent event) throws IOException {
         event.registerShader(new ShaderInstance(event.getResourceProvider(),
             ResourceLocation.fromNamespaceAndPath(ExtremeWeather.MODID,"vortex_volume"),
-            DefaultVertexFormat.POSITION_TEX_COLOR), loaded->vortex=loaded);
+            DefaultVertexFormat.POSITION_TEX_COLOR), loaded->{
+                vortex=loaded;
+                com.mojang.logging.LogUtils.getLogger().info("ExtremeWeather volume shader loaded");
+            });
     }
 }

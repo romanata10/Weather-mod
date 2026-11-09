@@ -97,6 +97,22 @@ jobs:
             exit 1
           }
           cat rcon-smoke.log
+      - name: Client volume shader loading smoke (graphics still unverified)
+        continue-on-error: true
+        shell: bash
+        run: |
+          if ! command -v xvfb-run >/dev/null; then
+            echo '::warning::Xvfb not present; client shader has not been tested'
+            exit 1
+          fi
+          timeout 160s xvfb-run -a -s '-screen 0 1280x720x24' \
+            gradle runClient --no-daemon > client-smoke.log 2>&1 || true
+          if ! grep -Fq 'ExtremeWeather volume shader loaded' client-smoke.log; then
+            tail -70 client-smoke.log
+            echo '::warning::Client shader registration was not confirmed; do not ship as a graphics feature'
+            exit 1
+          fi
+          echo 'Client accepted ExtremeWeather shader resource; appearance still needs an in-game review.'
       - uses: actions/upload-artifact@v4
         with:
           name: extremeweather-pm-neoforge-1.21.1
