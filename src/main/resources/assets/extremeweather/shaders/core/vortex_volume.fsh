@@ -18,7 +18,12 @@ float noise21(vec2 p) {
 }
 float density(vec3 p) {
     float height = clamp(p.y, 0.0, 1.0);
-    float radius = mix(0.10, 0.75, pow(height, 1.25));
+    // A wandering axis and a low, diffuse ground skirt keep the silhouette
+    // from reading as a rigid cylinder. All terms stay inside this one volume.
+    vec2 wandering = vec2(sin(height * 8.0 + GameTime * 45.0),
+                          cos(height * 6.0 - GameTime * 39.0)) * height * 0.09;
+    p.xz -= wandering;
+    float radius = mix(0.075, 0.70, pow(height, 1.32));
     float angle = atan(p.z, p.x);
     float rotation = angle * 4.0 + height * 14.0 + GameTime * 125.0;
     float gust = noise21(vec2(rotation * 0.8, height * 10.0 + GameTime * 35.0));
@@ -26,9 +31,14 @@ float density(vec3 p) {
     float distanceToAxis = length(p.xz);
     float shell = 1.0 - smoothstep(0.03, 0.19, abs(distanceToAxis - radius + swirl));
     float innerMist = 0.18 * (1.0 - smoothstep(0.0, radius, distanceToAxis));
-    float breakup = mix(0.52, 1.0, noise21(vec2(rotation * 1.5, height * 21.0 - GameTime * 20.0)));
-    return (shell + innerMist) * breakup * smoothstep(0.0, 0.1, height)
-           * (1.0 - smoothstep(0.88, 1.0, height));
+    float breakup = mix(0.48, 1.0, noise21(vec2(rotation * 1.5, height * 21.0 - GameTime * 20.0)));
+    float skirt = (1.0 - smoothstep(0.02, 0.16, height))
+                  * (1.0 - smoothstep(0.14, 0.86, distanceToAxis))
+                  * (0.16 + 0.17 * gust);
+    float wisps = (1.0 - smoothstep(0.10, 0.24, abs(distanceToAxis - radius - 0.17)))
+                  * (0.05 + 0.12 * gust);
+    return ((shell + innerMist + wisps) * breakup * smoothstep(0.0, 0.07, height)
+           * (1.0 - smoothstep(0.88, 1.0, height))) + skirt;
 }
 void main() {
     vec2 coord = vec2((volumeUV.x - 0.5) * 2.0, 1.0 - volumeUV.y);
