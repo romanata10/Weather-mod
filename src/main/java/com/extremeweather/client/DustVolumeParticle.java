@@ -34,7 +34,7 @@ public final class DustVolumeParticle extends Particle {
     private DustVolumeParticle(ClientLevel level,double x,double y,double z) {
         super(level,x,y,z);
         this.hasPhysics=false;
-        this.lifetime=80;
+        this.lifetime=22;
     }
     public static Particle create(SimpleParticleType type,ClientLevel level,double x,double y,double z,
                                   double dx,double dy,double dz) {
