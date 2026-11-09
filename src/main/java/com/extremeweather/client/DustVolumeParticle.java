@@ -51,8 +51,10 @@ public final class DustVolumeParticle extends Particle {
         Vec3 cameraPos=camera.getPosition();
         Vector3f base=new Vector3f((float)(x-cameraPos.x),(float)(y-cameraPos.y),(float)(z-cameraPos.z));
         Vector3f right=new Vector3f(1,0,0).rotate(camera.rotation()).mul(5.0f);
-        Vector3f up=new Vector3f(0,1,0).rotate(camera.rotation()).mul(18.0f);
-        float alpha=Math.min(1f,(lifetime-age)/8f);
+        // The funnel stands upright in the world. Rotating its vertical axis
+        // with camera pitch made it lean toward viewers looking up/down.
+        Vector3f up=new Vector3f(0,18.0f,0);
+        float alpha=Math.min(1f,(lifetime-age)/2f);
         vertex(vertices,new Vector3f(base).sub(right),0,1,alpha);
         vertex(vertices,new Vector3f(base).add(right),1,1,alpha);
         vertex(vertices,new Vector3f(base).add(right).add(up),1,0,alpha);
