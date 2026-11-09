@@ -61,6 +61,6 @@ public final class DustVolumeParticle extends Particle {
         vertex(vertices,new Vector3f(base).sub(right).add(up),0,0,alpha);
     }
     private static void vertex(VertexConsumer sink,Vector3f at,float u,float v,float alpha) {
-        sink.addVertex(at.x,at.y,at.z).setUv(u,v).setColor(.72f,.55f,.36f,alpha);
+        sink.addVertex(at.x,at.y,at.z).setUv(u,v).setColor(.53f,.36f,.23f,alpha);
     }
 }

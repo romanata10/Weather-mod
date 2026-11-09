@@ -26,7 +26,7 @@ float density(vec3 p) {
     float distanceToAxis = length(p.xz);
     float shell = 1.0 - smoothstep(0.03, 0.19, abs(distanceToAxis - radius + swirl));
     float innerMist = 0.18 * (1.0 - smoothstep(0.0, radius, distanceToAxis));
-    float breakup = mix(0.34, 1.0, noise21(vec2(rotation * 1.5, height * 21.0 - GameTime * 20.0)));
+    float breakup = mix(0.52, 1.0, noise21(vec2(rotation * 1.5, height * 21.0 - GameTime * 20.0)));
     return (shell + innerMist) * breakup * smoothstep(0.0, 0.1, height)
            * (1.0 - smoothstep(0.88, 1.0, height));
 }
@@ -38,7 +38,7 @@ void main() {
     for (int i = 0; i < 24; ++i) {
         float depth = (float(i) + 0.5) / 24.0;
         vec3 samplePoint = vec3(coord.x, coord.y, depth * 2.0 - 1.0);
-        float d = density(samplePoint) * 0.24;
+        float d = density(samplePoint) * 0.36;
         light += (1.0 - accumulated) * d * (0.5 + 0.5 * depth);
         accumulated += (1.0 - accumulated) * d;
     }
