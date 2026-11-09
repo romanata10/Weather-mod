@@ -65,7 +65,11 @@ public final class DisasterEngine {
         if(ticks%5==0) {
             for(Iterator<Whirl> it=whirls.iterator();it.hasNext();) {
                 Whirl w=it.next();
-                if(w.age++>w.life || !level.hasChunkAt(BlockPos.containing(w.pos))) {it.remove();continue;}
+                BlockPos at=BlockPos.containing(w.pos);
+                if(w.age++>w.life || !level.hasChunkAt(at) ||
+                    (w.kind==Kind.WATERSPOUT && !level.getFluidState(at.below()).is(FluidTags.WATER))) {
+                    it.remove();continue;
+                }
                 w.tick(level,ticks);
             }
         }
@@ -124,6 +128,7 @@ public final class DisasterEngine {
     public void clearManual(){manual.clear();}
     public void clearAll(){manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
     public int activeSqualls(){return squalls.size();}
+    public int activeSmallVortices(){return whirls.size();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
     public EffectResult trigger(ServerLevel level,Vec3 position,String effect) {
@@ -298,7 +303,8 @@ public final class DisasterEngine {
             level.sendParticles(ParticleTypes.ELECTRIC_SPARK,pos.getX(),pos.getY()+12,pos.getZ(),100,5,12,5,.15);
         } else if(level.random.nextInt(4)==0) {
             // Upper-atmosphere red sprite: visual only, no ground damage.
-            if(!level.isDay())sky.sprite(level,pos);
+            long dayTime=level.getDayTime()%24000;
+            if(dayTime>=13000 && dayTime<=23000)sky.sprite(level,pos);
         } else {
             // Rare ball lightning moves through the air and lightly shocks entities.
             sky.spawnBall(level,pos.getCenter().add(0,4,0));
@@ -337,11 +343,20 @@ public final class DisasterEngine {
         void tick(ServerLevel level,long clock) {
             Vec3 wind=WindEngine.getWind(BlockPos.containing(pos),level);
             pos=pos.add(wind.x*.5,0,wind.z*.5);
-            for(int i=0;i<14;i++) {
+            if(kind!=Kind.WATERSPOUT && level.hasChunkAt(BlockPos.containing(pos))) {
+                BlockPos surface=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,BlockPos.containing(pos));
+                pos=new Vec3(pos.x,surface.getY()+.15,pos.z);
+            }
+            for(int i=0;i<9;i++) {
                 double h=level.random.nextDouble()*16,phase=clock*.25+h*.5+i*2.4;
                 double r=.8+h*.1;
                 var particle=kind==Kind.WATERSPOUT?EWParticles.WATER.get():kind==Kind.SNOW_WHIRL?EWParticles.SNOW.get():kind==Kind.FIRE_WHIRL?ModParticleTypes.FLAME.get():kind==Kind.DUST_DEVIL?EWParticles.DUST.get():EWParticles.LAND.get();
-                level.sendParticles(particle,pos.x+Math.cos(phase)*r,pos.y+h,pos.z+Math.sin(phase)*r,1,0,.1,0,.02);
+                double x=pos.x+Math.cos(phase)*r,y=pos.y+h,z=pos.z+Math.sin(phase)*r;
+                // Natural whirls often begin 50 blocks away. Vanilla's default
+                // 32-block particle cutoff hid them even while server physics ran.
+                for(ServerPlayer viewer:level.players())
+                    if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
+                        level.sendParticles(viewer,particle,true,x,y,z,1,0,.1,0,.02);
             }
             if(clock%20==0)for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos,pos.add(0,15,0)).inflate(3))) {
                 if(entity instanceof ServerPlayer player && player.isCreative())continue;
