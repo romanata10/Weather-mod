@@ -64,8 +64,7 @@ public final class SkyPhenomena {
     private void emitSprite(ServerLevel level,Sprite sprite) {
         double x0=sprite.cloud.position.x,z0=sprite.cloud.position.z;
         double crownY=Math.min(level.getMaxBuildHeight()-8,Math.max(170,sprite.cloud.position.y+82));
-        var red=new DustParticleOptions(new Vector3f(1f,.07f,.11f),2f);
-        var pink=new DustParticleOptions(new Vector3f(1f,.27f,.20f),1.25f);
+        ParticleOptions red=com.extremeweather.particle.EWParticles.SPRITE_GLOW.get();
         for(int strand=0;strand<9;strand++) {
             double offset=(strand-4)*3.0;
             double zoffset=Math.sin(strand*2.7)*5;
@@ -74,9 +73,9 @@ public final class SkyPhenomena {
                 double x=x0+offset+Math.sin(t*9+strand)*t*3;
                 double y=crownY-t*(36+(strand%4)*4);
                 double z=z0+zoffset+Math.cos(t*7+strand)*t*2;
-                broadcastSky(level,sprite.focus,step<6?red:pink,x,y,z,step<5?2:1,.8,.5,.8,.01);
+                broadcastSky(level,sprite.focus,red,x,y,z,step<5?2:1,.8,.5,.8,.01);
                 if(step>=6 && step<16 && step%4==2)for(int twig=1;twig<=3;twig++)
-                    broadcastSky(level,sprite.focus,pink,x+(twig*1.7)*(strand%2==0?1:-1),y-twig*1.3,z+twig*.8,1,.2,.1,.2,0);
+                    broadcastSky(level,sprite.focus,red,x+(twig*1.7)*(strand%2==0?1:-1),y-twig*1.3,z+twig*.8,1,.2,.1,.2,0);
             }
             broadcastSky(level,sprite.focus,red,x0+offset,crownY+3,z0+zoffset,5,2,3,2,.012);
         }

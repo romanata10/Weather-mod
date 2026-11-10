@@ -50,6 +50,8 @@ public final class WhirlParticle extends TextureSheetParticle {
         @SubscribeEvent public static void register(RegisterParticleProvidersEvent event) {
             event.registerSpriteSet(EWParticles.DUST.get(),sprites->new Provider(sprites,.70f,.55f,.38f));
             event.registerSpecial(EWParticles.DUST_VOLUME.get(),DustVolumeParticle::create);
+            event.registerSpriteSet(EWParticles.SPRITE_GLOW.get(),sprites->
+                (type,level,x,y,z,dx,dy,dz)->new SpriteGlowParticle(level,x,y,z,sprites));
             event.registerSpriteSet(EWParticles.LAND.get(),sprites->new Provider(sprites,.83f,.79f,.72f));
             event.registerSpriteSet(EWParticles.WATER.get(),sprites->new Provider(sprites,.62f,.82f,1f));
             event.registerSpriteSet(EWParticles.SNOW.get(),sprites->new Provider(sprites,.91f,.97f,1f));

@@ -10,6 +10,7 @@ import net.minecraft.core.registries.Registries;
 /** The particles use PMWeather texture resource IDs at runtime, without shipping copies. */
 public final class EWParticles {
     public static final DeferredRegister<ParticleType<?>> PARTICLES=DeferredRegister.create(Registries.PARTICLE_TYPE,ExtremeWeather.MODID);
+    public static final DeferredHolder<ParticleType<?>,SimpleParticleType> SPRITE_GLOW=PARTICLES.register("sprite_glow",()->new SimpleParticleType(false));
     public static final DeferredHolder<ParticleType<?>,SimpleParticleType> DUST=PARTICLES.register("dust_whirl",()->new SimpleParticleType(false));
     // One shader-drawn volumetric quad per dust devil, not an atlas sprite list.
     public static final DeferredHolder<ParticleType<?>,SimpleParticleType> DUST_VOLUME=PARTICLES.register("dust_volume",()->new SimpleParticleType(false));
