@@ -209,6 +209,9 @@ jobs:
             tail -10 sprite-probe.log
             exit 1
           }
+          # The first render log precedes the GPU presentation of that frame.
+          # Wait for a subsequent frame while the 3-second sprite is still active.
+          sleep 0.65
           touch sprite-now
           for attempt in $(seq 1 30); do
             if [ -f sprite-screen.png ]; then break; fi
