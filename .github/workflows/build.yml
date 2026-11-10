@@ -244,6 +244,7 @@ jobs:
             echo "::warning::Client screen capture unavailable: $(cat capture.log 2>/dev/null | head -3)"
           fi
           if [ -f sprite-probe.log ]; then
+            echo "::notice::Sprite timing: $(grep 'sprite: ' sprite-probe.log | tail -1); $(cat sprite-capture.log 2>/dev/null | tail -1)"
             if grep -Fq 'ExtremeWeather red sprite particle rendered' client-smoke.log; then
               echo "::notice::$(grep -F 'ExtremeWeather red sprite particle rendered' client-smoke.log | head -1)"
             else
