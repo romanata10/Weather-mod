@@ -109,7 +109,7 @@ jobs:
           mkdir -p runserver-visual
           RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > runserver-visual/eula.txt
-          printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\nallow-flight=true\nlevel-type=minecraft:flat\n' "$RCON_PASSWORD" > runserver-visual/server.properties
+          printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\nallow-flight=true\nlevel-type=minecraft:flat\nview-distance=18\n' "$RCON_PASSWORD" > runserver-visual/server.properties
           timeout 300s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" "${CLIENT_PID:-}" 2>/dev/null || true' EXIT
@@ -123,7 +123,7 @@ jobs:
           # A fresh client otherwise pauses on the first-launch accessibility
           # screen BEFORE Quick Play attempts to contact our dedicated server.
           mkdir -p run
-          printf 'version:3955\nnarrator:0\nonboardAccessibility:false\nskipMultiplayerWarning:true\n' > run/options.txt
+          printf 'version:3955\nnarrator:0\nonboardAccessibility:false\nskipMultiplayerWarning:true\nrenderDistance:18\n' > run/options.txt
           cp run/options.txt options.txt
           timeout 220s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
             gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &

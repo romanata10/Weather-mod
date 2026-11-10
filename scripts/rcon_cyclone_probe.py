@@ -25,10 +25,10 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     # Above the storm deck, looking down from a stationary spectator camera.
     # A ground-level screenshot shows only rain/fog and cannot judge rotation.
     command(sock,6,2,'gamemode spectator @a')
-    command(sock,7,2,'execute as @a at @s run tp @s ~ 240 ~ 0 65')
+    command(sock,7,2,'execute as @a at @s run tp @s ~ 240 ~ 0 30')
     time.sleep(1)
     result=command(sock,4,2,
-        'execute as @a at @s anchored eyes positioned ^ ^0 ^170 run ew disaster hurricane')
+        'execute as @a at @s anchored eyes positioned ^ ^0 ^280 run ew disaster hurricane')
     print('native cyclone:',result,flush=True)
     if 'Started hurricane' not in result:
         raise AssertionError('PMWeather native cyclone failed to spawn')
