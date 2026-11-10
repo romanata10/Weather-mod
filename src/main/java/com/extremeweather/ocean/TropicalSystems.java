@@ -3,6 +3,7 @@ package com.extremeweather.ocean;
 import dev.protomanly.pmweather.weather.WindEngine;
 import dev.protomanly.pmweather.weather.Storm;
 import dev.protomanly.pmweather.weather.WeatherHandlerServer;
+import dev.protomanly.pmweather.weather.storms.StormTypes;
 import dev.protomanly.pmweather.particle.ModParticleTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -39,7 +40,7 @@ public final class TropicalSystems {
     public void clear(){systems.clear();pulses.clear();}
     public void tick(ServerLevel level) {
         ticks++;
-        if(ticks%2000==0 && systems.size()<2)attemptBirth(level);
+        if(ticks%40==0 && systems.size()<2)adoptNativeCyclones(level);
         if(ticks%10!=0)return;
         for(Iterator<Pulse> it=pulses.iterator();it.hasNext();) {
             Pulse wave=it.next();
@@ -74,21 +75,22 @@ public final class TropicalSystems {
                 pulses.add(new Pulse(system.center));
         }
     }
-    private void attemptBirth(ServerLevel level) {
+    /** PMWeather already owns natural spawning. Register only cyclones it has
+     * actually created; the old code spawned a second cyclone at the first
+     * nearby storm, even if that storm was a supercell or squall. */
+    private void adoptNativeCyclones(ServerLevel level) {
         if(level.players().isEmpty())return;
         var player=level.players().get(level.random.nextInt(level.players().size()));
-        for(var storm:NearbyStorms.get(level).stormsNearPlayer(player,512)) {
+        for(Storm storm:NearbyStorms.get(level).stormsNearPlayer(player,512)) {
+            if(!storm.is(StormTypes.CYCLONE) || storm.dead ||
+               systems.stream().anyMatch(s->s.storm==storm))continue;
             BlockPos origin=BlockPos.containing(storm.position);
             if(!level.hasChunkAt(origin) || !level.getBiome(origin).is(BiomeTags.IS_OCEAN))continue;
-            if(level.getBiome(origin).value().getBaseTemperature()<.7 || level.random.nextFloat()>.35)continue;
-            if(systems.stream().anyMatch(s->s.center.distanceToSqr(storm.position)<350*350))continue;
+            if(level.getBiome(origin).value().getBaseTemperature()<.7)continue;
+            com.extremeweather.compat.PMStormBridge.widenCyclone(storm);
             Basin basin=Basin.values()[level.random.nextInt(Basin.values().length)];
-            // Add rain bands around PMWeather's native cyclone rather than inventing
-            // a second cloud deck independent of PM's storm engine.
-            Storm cyclone=com.extremeweather.compat.PMStormBridge.cyclone(level,storm.position);
-            if(cyclone==null)continue;
-            systems.add(new System(cyclone,basin,500+level.random.nextInt(1100)));
-            break;
+            systems.add(new System(storm,basin,500+level.random.nextInt(1100)));
+            if(systems.size()>=2)break;
         }
     }
     private static final class Pulse {

@@ -59,14 +59,15 @@ public final class PMStormBridge {
     }
     public static Storm cyclone(ServerLevel level,Vec3 location) {
         Storm storm=spawn(level,StormTypes.CYCLONE,location,.80f,2);
-        if(storm==null)return null;
-        // Scale the ONE native PMWeather cyclone itself. Decorative ring
-        // particles cannot enlarge its synchronized rotating cloud deck.
+        if(storm!=null)widenCyclone(storm);
+        return storm;
+    }
+    /** Adopt and widen an existing native cyclone; NEVER spawn a second cloud. */
+    public static void widenCyclone(Storm storm) {
         storm.width=Math.max(storm.width,220f);
         storm.smoothWidth=Math.max(storm.smoothWidth,220f);
         storm.maxWidth=Math.max(storm.maxWidth,240);
         if(storm.weatherHandler instanceof WeatherHandlerServer handler)handler.syncStormUpdate(storm);
-        return storm;
     }
     public static Storm fireWhirl(ServerLevel level,Vec3 location) {
         return spawn(level,StormTypes.FIRE_WHIRL,location,.65f,1);
