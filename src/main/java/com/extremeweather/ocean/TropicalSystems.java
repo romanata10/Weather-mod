@@ -9,6 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BiomeTags;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
@@ -86,7 +87,10 @@ public final class TropicalSystems {
                systems.stream().anyMatch(s->s.storm==storm))continue;
             BlockPos origin=BlockPos.containing(storm.position);
             if(!level.hasChunkAt(origin) || !level.getBiome(origin).is(BiomeTags.IS_OCEAN))continue;
-            if(level.getBiome(origin).value().getBaseTemperature()<.7)continue;
+            // Ocean base temperatures are not a reliable tropical cutoff:
+            // warm_ocean itself can report 0.5 in the dependency's biomes.
+            if(!level.getBiome(origin).is(Biomes.WARM_OCEAN) &&
+               !level.getBiome(origin).is(Biomes.LUKEWARM_OCEAN))continue;
             com.extremeweather.compat.PMStormBridge.widenCyclone(storm);
             Basin basin=Basin.values()[level.random.nextInt(Basin.values().length)];
             systems.add(new System(storm,basin,500+level.random.nextInt(1100)));
