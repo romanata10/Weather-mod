@@ -38,6 +38,14 @@ public final class SurgeData extends SavedData {
         if(placed.size()>=128 || !level.hasChunkAt(pos) || !level.getBlockState(pos).isAir())return false;
         // Only temporary crests above existing water. Never overwrite structures or terrain.
         if(!level.getFluidState(pos.below()).is(FluidTags.WATER))return false;
+        // Two adjacent temporary source blocks can create a new infinite
+        // vanilla source that is NOT in placed and survives cleanup. Keep
+        // crests separate from all water at the temporary crest height.
+        for(int dx=-2;dx<=2;dx++)for(int dz=-2;dz<=2;dz++) {
+            if(dx==0 && dz==0)continue;
+            BlockPos neighbor=pos.offset(dx,0,dz);
+            if(!level.hasChunkAt(neighbor) || level.getFluidState(neighbor).is(FluidTags.WATER))return false;
+        }
         placed.put(pos,level.getGameTime()+duration);
         level.setBlock(pos,Blocks.WATER.defaultBlockState(),3);
         setDirty();

@@ -185,5 +185,13 @@ with connection as conn:
     print("clear crest target:",send(conn,39,2,"setblock 2 64 0 minecraft:air"),flush=True)
     check(36, "ew disaster flood 2 64 0", "Started flood")
     check(37, "execute if block 2 64 0 minecraft:water", "passed")
+    # Reject another crest alongside the first: two vanilla source blocks can
+    # create untracked permanent water even after the addon removes its own.
+    send(conn,117,2,"setblock 3 63 0 minecraft:water")
+    second=send(conn,118,2,"ew disaster flood 3 64 0")
+    print("adjacent flood crest rejected:",second,flush=True)
+    if 'Started flood' in second:raise AssertionError("Unsafe adjacent flood source was allowed")
     check(38, "ew clear all", "PMWeather storms and addon weather cleared")
+    time.sleep(1.5)
+    check(119,"execute if block 2 64 0 minecraft:air","passed")
 print("PMWeather storm/tornado and scorched-ground integration tests passed")
