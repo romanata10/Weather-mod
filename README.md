@@ -27,7 +27,7 @@ Install Java 21 and Gradle 8.8, then run `gradle build`. The GitHub Actions work
 * `/ew ignite <x> <y> <z>` — operator wildfire ignition at loaded coordinates (also usable from the server console).
 * `/ew status` — count nearby native storms, PMWeather sub-vortices and tracked wildfire blocks. `/ew clear` removes only addon outlines; `/ew clear all` clears native PMWeather storms, active addon effects, wildfire sources and temporary surge water in the current dimension (operator-only).
 
-**Shape attribution:** The user supplied a tornado-type reference chart. `/ew vortex` now configures an actual PMWeather supercell through public storm fields and PMWeather server sync. Because PMWeather exposes a continuous tornadoShape float, not an enum for every chart label, exact 23 distinct native silhouettes remain unverified. `/ew outline` remains a separate, optional addon particle effect and is not part of `/ew vortex`; no imagery or textures from PMWeather are copied.
+**Shape attribution:** The user supplied a tornado-type reference chart. `/ew vortex` now configures an actual PMWeather supercell through public storm fields and PMWeather server sync. Because PMWeather exposes a continuous tornadoShape float, not an enum for every chart label, exact 23 distinct native silhouettes remain unverified. The joined-client native-wedge screenshot in CI run 42833774358 shows mostly haze/sky and does **not** establish a visible tornado funnel; server-side width/sub-vortex checks must not be treated as visual acceptance. `/ew outline` remains a separate, optional addon particle effect and is not part of `/ew vortex`; no imagery or textures from PMWeather are copied.
 
 ### PMWeather renderer limitations (important)
 
