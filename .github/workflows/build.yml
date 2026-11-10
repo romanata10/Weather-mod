@@ -154,7 +154,9 @@ jobs:
               fi
               sleep 1
             done
-            for attempt in $(seq 1 30); do
+            # The native storm probe waits ten seconds for PMWeather to tick;
+            # keep this framebuffer worker alive until that staging finishes.
+            for attempt in $(seq 1 100); do
               if [ -f native-vortex-now ]; then
                 python3 scripts/capture_client.py native-vortex-screen.png > native-vortex-capture.log 2>&1 || true
                 break
