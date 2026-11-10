@@ -138,6 +138,10 @@ with connection as conn:
     check(105, "fillbiome -16 90 -16 16 110 16 minecraft:plains", "biome entry")
     check(32, "ew disaster hurricane 0 100 0", "Started hurricane")
     check(61, "execute positioned 0 100 0 run ew status", "active cyclone systems: 1")
+    rejected_sprite=send(conn,116,2,"ew disaster sprite 0 100 0")
+    print("sprite over cyclone rejected:",rejected_sprite,flush=True)
+    if 'Sprite requires night and a nearby PMWeather thundercloud' not in rejected_sprite:
+        raise AssertionError("Cyclone was incorrectly accepted as sprite thundercloud: "+rejected_sprite)
     cyclone_status=send(conn,103,2,"execute positioned 0 100 0 run ew status")
     import re
     width=re.search(r"widest native cyclone width: (\d+)",cyclone_status)

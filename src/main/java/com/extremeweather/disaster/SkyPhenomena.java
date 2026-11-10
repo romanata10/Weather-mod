@@ -48,6 +48,9 @@ public final class SkyPhenomena {
         // range check against the player's Y rejects storms directly overhead.
         var cloud=net.nullved.pmweatherapi.storm.NearbyStorms.get(level)
             .stormsNearBlock(origin,2048).stream()
+            .filter(storm->!storm.dead &&
+                (storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL) ||
+                 storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)))
             .filter(storm->Math.hypot(storm.position.x-origin.getX(),storm.position.z-origin.getZ())<220)
             .min(java.util.Comparator.comparingDouble(storm->Math.hypot(storm.position.x-origin.getX(),storm.position.z-origin.getZ())))
             .orElse(null);
