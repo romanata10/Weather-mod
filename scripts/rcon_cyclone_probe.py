@@ -32,6 +32,15 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     print('warm ocean biome:',biome,flush=True)
     if 'biome entry' not in biome:
         raise AssertionError('Could not stage warm ocean for natural cyclone adoption')
+    control=command(sock,10,2,at+'ew storm supercell 70')
+    print('non-cyclone control:',control,flush=True)
+    if 'Spawned PMWeather storm' not in control:
+        raise AssertionError('Could not create non-cyclone control storm')
+    time.sleep(2.5)
+    control_status=command(sock,11,2,'ew status')
+    if 'active cyclone systems: 0' not in control_status:
+        raise AssertionError('A native supercell was incorrectly adopted as a cyclone: '+control_status)
+    command(sock,12,2,'ew clear all')
     result=command(sock,4,2,at+'ew storm cyclone 80')
     print('one existing native cyclone:',result,flush=True)
     if 'Spawned PMWeather storm' not in result:
