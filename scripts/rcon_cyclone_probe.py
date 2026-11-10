@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CI-only: create ONE native PMWeather cyclone before a second client frame."""
-import socket,sys,time
+import socket,sys,time,re
 import struct
 
 def exact(sock,count):
@@ -27,14 +27,21 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     command(sock,6,2,'gamemode spectator @a')
     command(sock,7,2,'execute as @a at @s run tp @s ~ 240 ~ 0 30')
     time.sleep(1)
-    result=command(sock,4,2,
-        'execute as @a at @s anchored eyes positioned ^ ^0 ^280 run ew disaster hurricane')
-    print('native cyclone:',result,flush=True)
-    if 'Started hurricane' not in result:
+    at='execute as @a at @s anchored eyes positioned ^ ^0 ^280 run '
+    biome=command(sock,8,2,at+'fillbiome ~-8 ~-8 ~-8 ~8 ~8 ~8 minecraft:warm_ocean')
+    print('warm ocean biome:',biome,flush=True)
+    if 'biome entry' not in biome:
+        raise AssertionError('Could not stage warm ocean for natural cyclone adoption')
+    result=command(sock,4,2,at+'ew storm cyclone 80')
+    print('one existing native cyclone:',result,flush=True)
+    if 'Spawned PMWeather storm' not in result:
         raise AssertionError('PMWeather native cyclone failed to spawn')
     time.sleep(5)
     status=command(sock,5,2,'ew status')
     print('after cyclone:',status,flush=True)
-    if 'active cyclone systems: 1' not in status:
-        raise AssertionError('Native cyclone no longer tracked during client capture')
+    width=re.search(r'widest native cyclone width: (\d+)',status)
+    if ('active cyclone systems: 1' not in status or
+        'PMWeather storms nearby: 1' not in status or
+        not width or int(width.group(1))<220):
+        raise AssertionError('Existing PM cyclone was not adopted/widened exactly once: '+status)
 
