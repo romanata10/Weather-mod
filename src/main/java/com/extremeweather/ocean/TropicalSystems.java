@@ -31,6 +31,7 @@ public final class TropicalSystems {
     }
     public int count(){return systems.size();}
     public double weakestPower(){return systems.stream().mapToDouble(s->s.power).min().orElse(1);}
+    public int widestNativeWidth(){return systems.stream().mapToInt(s->Math.round(s.storm.width)).max().orElse(0);}
     public boolean spawnPulse(ServerLevel level,Vec3 center) {
         if(pulses.size()>=2 || !level.hasChunkAt(BlockPos.containing(center)))return false;
         pulses.add(new Pulse(center));return true;

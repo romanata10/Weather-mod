@@ -133,6 +133,11 @@ with connection as conn:
     check(31, "ew clear all", "PMWeather storms and addon weather cleared")
     check(32, "ew disaster hurricane 0 100 0", "Started hurricane")
     check(61, "execute positioned 0 100 0 run ew status", "active cyclone systems: 1")
+    cyclone_status=send(conn,103,2,"execute positioned 0 100 0 run ew status")
+    import re
+    width=re.search(r"widest native cyclone width: (\d+)",cyclone_status)
+    if not width or int(width.group(1))<220:
+        raise AssertionError("Native PMWeather cyclone did not keep the requested wide cloud state: "+cyclone_status)
     check(33, "ew clear all", "PMWeather storms and addon weather cleared")
     print("prepare water:",send(conn,34,2,"setblock 2 63 0 minecraft:water"),flush=True)
     check(55, "execute if block 2 63 0 minecraft:water", "passed")

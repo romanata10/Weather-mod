@@ -131,6 +131,7 @@ public final class DisasterEngine {
     public long squallPushes(){return squalls.stream().mapToLong(field->field.pushes).sum();}
     public int activeCyclones(){return tropical.count();}
     public double weakestCyclonePower(){return tropical.weakestPower();}
+    public int widestNativeCycloneWidth(){return tropical.widestNativeWidth();}
     public int activeSmallVortices(){return whirls.size();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
