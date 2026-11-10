@@ -41,7 +41,7 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     print('after cyclone:',status,flush=True)
     width=re.search(r'widest native cyclone width: (\d+)',status)
     if ('active cyclone systems: 1' not in status or
-        'PMWeather storms nearby: 1' not in status or
+        'native cyclones nearby: 1' not in status or
         not width or int(width.group(1))<180):
         raise AssertionError('Existing PM cyclone was not adopted/widened exactly once: '+status)
 

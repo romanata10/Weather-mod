@@ -71,6 +71,9 @@ public final class EWCommands {
                 int count=NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(c.getSource().getPosition()),4096).size();
                 int satellites=NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(c.getSource().getPosition()),4096)
                     .stream().mapToInt(storm->storm.vorticies==null?0:storm.vorticies.size()).sum();
+                long nativeCyclones=NearbyStorms.get(level).stormsNearBlock(
+                    BlockPos.containing(c.getSource().getPosition()),4096).stream()
+                    .filter(storm->storm.is(StormTypes.CYCLONE)).count();
                 int fires=FireEvents.active(level);
                 int squalls=DisasterEvents.get(level).activeSqualls();
                 int smallVortices=DisasterEvents.get(level).activeSmallVortices();
@@ -85,7 +88,8 @@ public final class EWCommands {
                     "; native sub-vortices: "+satellites+"; active squall gusts: "+squalls+
                     "; active small vortices: "+smallVortices+"; active sprites: "+sprites+
                     "; active whirlpools: "+whirlpools+"; whirlpool pulls: "+whirlpoolPulls+"; squall pushes: "+pushes+
-                    "; tracked wildfire blocks: "+fires+"; active cyclone systems: "+cyclones+
+                    "; tracked wildfire blocks: "+fires+"; native cyclones nearby: "+nativeCyclones+
+                    "; active cyclone systems: "+cyclones+
                     "; weakest cyclone power: "+String.format(java.util.Locale.ROOT,"%.2f",cyclonePower)+
                     "; widest native cyclone width: "+cycloneWidth),false);
                 return 1;
