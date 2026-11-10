@@ -49,9 +49,9 @@ jobs:
           javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
             | grep -Ei '(tornado|stage|width|vortic|funnel|wind)' \
             | while IFS= read -r line; do echo "::notice::PMWeather Storm API: $line"; done
-          CLASSES=$(jar tf "$JAR" | grep -E 'weather/storms/[^/]+\.class$' | head -30 || true)
-          MEMBERS=$(javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm | head -100)
-          echo "::notice::PMWeather storm classes and members%0A${CLASSES//$'\n'/'%0A'}%0A${MEMBERS//$'\n'/'%0A'}"
+          MEMBERS=$(javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
+            | grep -Ei '(stage|tornad|intensity|growth|level|boolean|stormType|update\()' | head -35)
+          echo "::notice::Native storm lifecycle fields%0A${MEMBERS//$'\n'/'%0A'}"
       - name: Validate runtime PMWeather particle textures
         shell: bash
         run: |
