@@ -42,6 +42,11 @@ public final class TropicalSystems {
     public void tick(ServerLevel level) {
         ticks++;
         if(ticks%40==0 && systems.size()<2)adoptNativeCyclones(level);
+        // PMWeather can restore its maximum cloud width between our 40-tick
+        // syncs. Keep the existing storm constrained on land every server tick.
+        for(System system:systems)if(!system.storm.dead && level.hasChunkAt(BlockPos.containing(system.storm.position)) &&
+            !level.getBiome(BlockPos.containing(system.storm.position)).is(BiomeTags.IS_OCEAN))
+            system.constrainLandfallWidth();
         if(ticks%10!=0)return;
         for(Iterator<Pulse> it=pulses.iterator();it.hasNext();) {
             Pulse wave=it.next();
@@ -132,6 +137,12 @@ public final class TropicalSystems {
         System(Storm storm,Basin basin,int life){
             this.storm=storm;this.center=storm.position;this.basin=basin;this.life=life;
         }
+        void constrainLandfallWidth() {
+            float target=(float)Math.max(36,220*power);
+            storm.width=Math.min(storm.width,target);
+            storm.smoothWidth=Math.min(storm.smoothWidth,target);
+            storm.maxWidth=Math.min(storm.maxWidth,Math.max(40,Math.round(target)));
+        }
         void updateNativeStorm(boolean ocean) {
             if(ocean) {
                 storm.width=Math.max(storm.width,220f);
@@ -140,10 +151,7 @@ public final class TropicalSystems {
             } else {
                 // Decay wind AND the one PMWeather cloud; otherwise a cyclone
                 // retains a giant rotating cloud at minimum post-landfall power.
-                float target=(float)Math.max(36,220*power);
-                storm.width=Math.min(storm.width,target);
-                storm.smoothWidth=Math.min(storm.smoothWidth,target);
-                storm.maxWidth=Math.min(storm.maxWidth,Math.max(40,Math.round(target)));
+                constrainLandfallWidth();
                 storm.cycloneWindspeed*=.95f;
                 storm.smoothWindspeed*=.95f;
                 if(storm.maxWindspeed>20)storm.maxWindspeed=Math.max(20,(int)(storm.maxWindspeed*.95));
