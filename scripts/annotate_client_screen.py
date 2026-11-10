@@ -6,7 +6,8 @@ from io import BytesIO
 from pathlib import Path
 from PIL import Image
 path=Path(sys.argv[1] if len(sys.argv)>1 else 'client-screen.png')
-prefix='ClientBaseline' if len(sys.argv)>1 else 'ClientScreen'
+prefix=('ClientBaseline' if path.name=='client-baseline.png' else
+        'CycloneScreen' if path.name=='cyclone-screen.png' else 'ClientScreen')
 if not path.is_file():
     raise SystemExit(0)
 img=Image.open(path).convert('RGB')

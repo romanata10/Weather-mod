@@ -141,6 +141,13 @@ jobs:
               fi
               sleep 1
             done
+            for attempt in $(seq 1 30); do
+              if [ -f cyclone-now ]; then
+                python3 scripts/capture_client.py cyclone-screen.png > cyclone-capture.log 2>&1 || true
+                break
+              fi
+              sleep 1
+            done
             wait "$GAME"
           ' &
           CLIENT_PID=$!
@@ -173,6 +180,19 @@ jobs:
             exit 1
           fi
           echo 'Client renderer executed and framebuffer captured; appearance still needs review.'
+          python3 scripts/rcon_cyclone_probe.py "$RCON_PASSWORD" > cyclone-probe.log 2>&1 || {
+            echo '::warning::Native cyclone client probe failed'
+            tail -12 cyclone-probe.log
+            exit 1
+          }
+          tail -4 cyclone-probe.log
+          touch cyclone-now
+          for attempt in $(seq 1 20); do
+            if [ -f cyclone-screen.png ]; then break; fi
+            sleep 1
+          done
+          test -f cyclone-screen.png || { echo '::warning::Cyclone framebuffer not captured'; exit 1; }
+          echo '::notice::Native cyclone client screenshot captured; visual appearance still needs manual review.'
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash
@@ -216,6 +236,13 @@ jobs:
           if [ -f client-baseline.png ]; then
             python3 scripts/annotate_client_screen.py client-baseline.png || echo '::warning::Baseline thumbnail unavailable'
           fi
+      - name: Show native cyclone client preview in separate check annotations
+        if: always()
+        shell: bash
+        run: |
+          if [ -f cyclone-screen.png ]; then
+            python3 scripts/annotate_client_screen.py cyclone-screen.png || echo '::warning::Cyclone thumbnail unavailable'
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -223,6 +250,7 @@ jobs:
           path: |
             client-screen.png
             client-baseline.png
+            cyclone-screen.png
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
