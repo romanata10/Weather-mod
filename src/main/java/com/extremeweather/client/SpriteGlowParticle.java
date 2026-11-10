@@ -24,7 +24,7 @@ final class SpriteGlowParticle extends TextureSheetParticle {
     @Override public void render(VertexConsumer vertices,Camera camera,float partialTick) {
         if(!firstRenderLogged) {
             firstRenderLogged=true;
-            com.mojang.logging.LogUtils.getLogger().info("ExtremeWeather red sprite particle rendered; camera distance {}",camera.getPosition().distanceTo(new net.minecraft.world.phys.Vec3(x,y,z)));
+            com.mojang.logging.LogUtils.getLogger().info("ExtremeWeather red sprite particle rendered; camera {} particle {} distance {}",camera.getPosition(),new net.minecraft.world.phys.Vec3(x,y,z),camera.getPosition().distanceTo(new net.minecraft.world.phys.Vec3(x,y,z)));
         }
         super.render(vertices,camera,partialTick);
     }
