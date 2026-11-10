@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """CI-only: place a transient red sprite above one native thunderstorm."""
 import socket,struct,sys,time
+from pathlib import Path
 from datetime import datetime,timezone
 
 def exact(sock,count):
@@ -39,3 +40,10 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     print('sprite server state:',status,flush=True)
     if 'active sprites: 1' not in status:
         raise AssertionError('Sprite not active when client capture requested')
+    for _ in range(40):
+        if 'ExtremeWeather red sprite particle rendered' in Path('client-smoke.log').read_text(errors='ignore'):
+            print('joined client rendered a red sprite particle',flush=True)
+            break
+        time.sleep(.1)
+    else:
+        raise AssertionError('No red sprite particle reached the client before capture')
