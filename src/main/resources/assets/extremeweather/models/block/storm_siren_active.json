@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "extremeweather:block/storm_siren_side_active",
+    "up": "extremeweather:block/storm_siren_top_active",
+    "down": "extremeweather:block/storm_siren_bottom",
+    "north": "extremeweather:block/storm_siren_side_active",
+    "south": "extremeweather:block/storm_siren_side_active",
+    "west": "extremeweather:block/storm_siren_side_active",
+    "east": "extremeweather:block/storm_siren_side_active"
+  }
+}
