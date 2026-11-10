@@ -22,6 +22,11 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     command(sock,1,3,sys.argv[1])
     print('before cyclone:',command(sock,2,2,'ew status'),flush=True)
     command(sock,3,2,'ew clear all')
+    # Above the storm deck, looking down from a stationary spectator camera.
+    # A ground-level screenshot shows only rain/fog and cannot judge rotation.
+    command(sock,6,2,'gamemode spectator @a')
+    command(sock,7,2,'execute as @a at @s run tp @s ~ 240 ~ 0 65')
+    time.sleep(1)
     result=command(sock,4,2,
         'execute as @a at @s anchored eyes positioned ^ ^0 ^170 run ew disaster hurricane')
     print('native cyclone:',result,flush=True)
