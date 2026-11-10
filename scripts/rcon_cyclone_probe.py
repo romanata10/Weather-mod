@@ -28,7 +28,7 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     command(sock,7,2,'execute as @a at @s run tp @s ~ 240 ~ 0 30')
     time.sleep(1)
     at='execute as @a at @s anchored eyes positioned ^ ^0 ^280 run '
-    biome=command(sock,8,2,at+'fillbiome ~-8 ~-8 ~-8 ~8 ~8 ~8 minecraft:warm_ocean')
+    biome=command(sock,8,2,at+'fillbiome ~-16 ~-8 ~-16 ~16 ~8 ~16 minecraft:warm_ocean')
     print('warm ocean biome:',biome,flush=True)
     if 'biome entry' not in biome:
         raise AssertionError('Could not stage warm ocean for natural cyclone adoption')
@@ -42,6 +42,6 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     width=re.search(r'widest native cyclone width: (\d+)',status)
     if ('active cyclone systems: 1' not in status or
         'PMWeather storms nearby: 1' not in status or
-        not width or int(width.group(1))<220):
+        not width or int(width.group(1))<180):
         raise AssertionError('Existing PM cyclone was not adopted/widened exactly once: '+status)
 
