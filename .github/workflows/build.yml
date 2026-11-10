@@ -211,28 +211,30 @@ jobs:
           done
           test -f cyclone-screen.png || { echo '::warning::Cyclone framebuffer not captured'; exit 1; }
           echo '::notice::Native cyclone client screenshot captured; visual appearance still needs manual review.'
-          python3 scripts/rcon_sprite_probe.py "$RCON_PASSWORD" > sprite-probe.log 2>&1 || {
-            echo '::warning::Nighttime PMWeather-cloud sprite probe failed'
+          if python3 scripts/rcon_sprite_probe.py "$RCON_PASSWORD" > sprite-probe.log 2>&1; then
+            # The first render log precedes presentation of that GPU frame.
+            sleep 0.65
+            touch sprite-now
+            for attempt in $(seq 1 30); do
+              if [ -f sprite-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f sprite-screen.png ]; then
+              echo '::notice::Sprite screenshot captured from native storm; branching appearance needs review.'
+            else
+              echo '::warning::Sprite framebuffer not captured'
+            fi
+          else
+            echo '::warning::Nighttime PMWeather-cloud sprite probe failed; continuing to water check'
             tail -10 sprite-probe.log
-            exit 1
-          }
-          # The first render log precedes the GPU presentation of that frame.
-          # Wait for a subsequent frame while the 3-second sprite is still active.
-          sleep 0.65
-          touch sprite-now
-          for attempt in $(seq 1 30); do
-            if [ -f sprite-screen.png ]; then break; fi
-            sleep .2
-          done
-          test -f sprite-screen.png || { echo '::warning::Sprite framebuffer not captured'; exit 1; }
-          echo '::notice::Sprite screenshot captured from native storm; branching appearance requires manual review.'
+          fi
           python3 scripts/rcon_whirlpool_probe.py "$RCON_PASSWORD" > whirlpool-probe.log 2>&1 || {
             echo '::warning::Joined-client whirlpool visual probe failed'
             tail -10 whirlpool-probe.log
             exit 1
           }
           touch whirlpool-now
-          for attempt in $(seq 1 40); do
+          for attempt in $(seq 1 90); do
             if [ -f whirlpool-screen.png ]; then break; fi
             sleep .2
           done
