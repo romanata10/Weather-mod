@@ -135,7 +135,7 @@ with connection as conn:
     check(63, "ew status", "active small vortices: 1")
     check(31, "ew clear all", "PMWeather storms and addon weather cleared")
     # The test must be land irrespective of randomized overworld spawn biome.
-    check(105, "fillbiome 0 100 0 0 100 0 minecraft:plains", "biome entry")
+    check(105, "fillbiome -16 90 -16 16 110 16 minecraft:plains", "biome entry")
     check(32, "ew disaster hurricane 0 100 0", "Started hurricane")
     check(61, "execute positioned 0 100 0 run ew status", "active cyclone systems: 1")
     cyclone_status=send(conn,103,2,"execute positioned 0 100 0 run ew status")
