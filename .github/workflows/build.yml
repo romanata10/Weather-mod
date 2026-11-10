@@ -244,6 +244,11 @@ jobs:
             echo "::warning::Client screen capture unavailable: $(cat capture.log 2>/dev/null | head -3)"
           fi
           if [ -f sprite-probe.log ]; then
+            if grep -Fq 'ExtremeWeather red sprite particle rendered' client-smoke.log; then
+              echo "::notice::$(grep -F 'ExtremeWeather red sprite particle rendered' client-smoke.log | head -1)"
+            else
+              echo '::warning::No SpriteGlowParticle render call observed in joined client'
+            fi
             DATA=$(tail -3 sprite-probe.log); DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Sprite in-world probe%0A$DATA"
           fi
