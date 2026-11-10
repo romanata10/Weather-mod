@@ -17,7 +17,7 @@ final class SpriteGlowParticle extends TextureSheetParticle {
         gravity=0;
         xd=yd=zd=0;
         lifetime=18;
-        quadSize=2.2f;
+        quadSize=1.05f;
         setColor(1f,.055f,.085f);
         setSpriteFromAge(sprites);
     }
