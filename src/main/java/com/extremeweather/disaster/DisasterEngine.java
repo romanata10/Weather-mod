@@ -37,10 +37,33 @@ public final class DisasterEngine {
     private final com.extremeweather.vortex.ManualVortices manual=new com.extremeweather.vortex.ManualVortices();
     private final com.extremeweather.ocean.TropicalSystems tropical=new com.extremeweather.ocean.TropicalSystems();
     private final Map<UUID,Long> lastStorm=new HashMap<>();
+    // Only explicitly requested native PM funnels: PMWeather may reset width
+    // to its default 10 on later ticks. Keep the SAME storm, never a duplicate.
+    private final Map<dev.protomanly.pmweather.weather.Storm,NativeFunnel> nativeFunnels=new IdentityHashMap<>();
+    private record NativeFunnel(float width,float shape,int maxWidth,long expires) {}
+    public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm) {
+        nativeFunnels.put(storm,new NativeFunnel(storm.width,storm.tornadoShape,storm.maxWidth,ticks+1200));
+    }
+    private void maintainNativeFunnels() {
+        for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {
+            var entry=it.next();var storm=entry.getKey();var preset=entry.getValue();
+            if(storm.dead || ticks>=preset.expires()) {it.remove();continue;}
+            if(storm.width<preset.width() || storm.smoothWidth<preset.width() ||
+               storm.maxWidth<preset.maxWidth() || storm.tornadoShape!=preset.shape()) {
+                storm.width=Math.max(storm.width,preset.width());
+                storm.smoothWidth=Math.max(storm.smoothWidth,preset.width());
+                storm.maxWidth=Math.max(storm.maxWidth,preset.maxWidth());
+                storm.tornadoShape=preset.shape();
+            }
+            if(ticks%20==0 && storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
+                handler.syncStormUpdate(storm);
+        }
+    }
     private long ticks;
 
     public void tick(ServerLevel level) {
         ticks++;
+        maintainNativeFunnels();
         manual.tick(level);
         tropical.tick(level);
         if(ticks%5==0)for(Iterator<HailField> it=hailFields.iterator();it.hasNext();) {
@@ -126,7 +149,7 @@ public final class DisasterEngine {
         return manual.spawn(level,pos,shape,ef);
     }
     public void clearManual(){manual.clear();}
-    public void clearAll(){manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
+    public void clearAll(){nativeFunnels.clear();manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
     public int activeSqualls(){return squalls.size();}
     public long squallPushes(){return squalls.stream().mapToLong(field->field.pushes).sum();}
     public int activeCyclones(){return tropical.count();}

@@ -139,9 +139,11 @@ public final class EWCommands {
         if(shape==null){context.getSource().sendFailure(Component.literal("Unknown shape. Use tab completion."));return 0;}
         int ef=IntegerArgumentType.getInteger(context,"ef");ServerLevel level=context.getSource().getLevel();
         try {
-            if(PMStormBridge.nativeFunnel(level,context.getSource().getPosition(),shape,ef)==null){
+            var storm=PMStormBridge.nativeFunnel(level,context.getSource().getPosition(),shape,ef);
+            if(storm==null){
                 context.getSource().sendFailure(Component.literal("PMWeather cannot spawn here (unloaded chunk or storm limit)."));return 0;
             }
+            DisasterEvents.get(level).trackNativeFunnel(storm);
         } catch(RuntimeException error){context.getSource().sendFailure(Component.literal("PMWeather spawn failed: "+error.getMessage()));return 0;}
         context.getSource().sendSuccess(()->Component.literal("One native PMWeather supercell EF"+ef+
             " (requested "+shape+"; PMWeather controls its actual funnel geometry; no second silhouette)."),true);
