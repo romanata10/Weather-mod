@@ -3,6 +3,7 @@
 
 A captured framebuffer is evidence to inspect, not proof of a realistic shape.
 """
+import re
 import socket
 import struct
 import sys
@@ -51,8 +52,13 @@ with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
     print('native wedge command:', result, flush=True)
     if 'One native PMWeather supercell' not in result:
         raise AssertionError('Native funnel did not spawn: ' + result)
-    time.sleep(3)
+    # The first frame still contains the spectator-mode toast and the native
+    # storm has not had time to advance. Capture after server/client ticks.
+    time.sleep(10)
     status = command(sock, 8, 2, 'ew status')
     print('native wedge state:', status, flush=True)
     if 'PMWeather storms nearby: 1' not in status:
         raise AssertionError('Expected one native PMWeather storm: ' + status)
+    width = re.search(r'widest native supercell width: (\d+)', status)
+    if not width or int(width.group(1)) < 20:
+        raise AssertionError('Native PMWeather supercell lost its funnel width: ' + status)
