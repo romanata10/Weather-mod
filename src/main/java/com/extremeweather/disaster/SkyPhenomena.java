@@ -63,7 +63,7 @@ public final class SkyPhenomena {
      * turn toward a sprite. This remains particle geometry, not PM's shader. */
     private void emitSprite(ServerLevel level,Sprite sprite) {
         double x0=sprite.cloud.position.x,z0=sprite.cloud.position.z;
-        double crownY=Math.min(level.getMaxBuildHeight()-8,Math.max(170,sprite.cloud.position.y+82));
+        double crownY=Math.min(level.getMaxBuildHeight()-8,Math.max(190,sprite.cloud.position.y+112));
         ParticleOptions red=com.extremeweather.particle.EWParticles.SPRITE_GLOW.get();
         for(int strand=0;strand<9;strand++) {
             double offset=(strand-4)*3.0;

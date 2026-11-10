@@ -23,9 +23,9 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     command(sock,1,3,sys.argv[1])
     command(sock,2,2,'ew clear all')
     command(sock,3,2,'time set midnight')
-    command(sock,4,2,'execute as @a at @s run tp @s ~ 245 ~ 0 0')
+    command(sock,4,2,'execute as @a at @s run tp @s ~ 245 ~ 0 -25')
     time.sleep(.6)
-    place='execute as @a at @s anchored eyes positioned ^ ^-85 ^45 run '
+    place='execute as @a at @s anchored eyes positioned ^ ^-110 ^45 run '
     storm=command(sock,5,2,place+'ew storm supercell 70')
     print('thunderstorm:',storm,flush=True)
     if 'Spawned PMWeather storm' not in storm:
