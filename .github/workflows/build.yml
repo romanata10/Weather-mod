@@ -155,6 +155,13 @@ jobs:
               sleep 1
             done
             for attempt in $(seq 1 30); do
+              if [ -f native-vortex-now ]; then
+                python3 scripts/capture_client.py native-vortex-screen.png > native-vortex-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            for attempt in $(seq 1 30); do
               if [ -f cyclone-now ]; then
                 python3 scripts/capture_client.py cyclone-screen.png > cyclone-capture.log 2>&1 || true
                 break
@@ -207,6 +214,21 @@ jobs:
             exit 1
           fi
           echo 'Client renderer executed and framebuffer captured; appearance still needs review.'
+          if python3 scripts/rcon_native_vortex_probe.py "$RCON_PASSWORD" > native-vortex-probe.log 2>&1; then
+            touch native-vortex-now
+            for attempt in $(seq 1 60); do
+              if [ -f native-vortex-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f native-vortex-screen.png ]; then
+              echo '::notice::Native PMWeather wedge framebuffer captured; funnel visibility and fidelity require manual review.'
+            else
+              echo '::warning::Native PMWeather wedge framebuffer unavailable'
+            fi
+          else
+            echo '::warning::Native PMWeather wedge staging failed'
+            tail -8 native-vortex-probe.log
+          fi
           python3 scripts/rcon_cyclone_probe.py "$RCON_PASSWORD" > cyclone-probe.log 2>&1 || {
             echo '::warning::Native cyclone client probe failed'
             tail -12 cyclone-probe.log
@@ -294,6 +316,10 @@ jobs:
             DATA=$(tail -3 sprite-probe.log); DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Sprite in-world probe%0A$DATA"
           fi
+          if [ -f native-vortex-probe.log ]; then
+            DATA=$(tail -3 native-vortex-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Native funnel staging%0A$DATA"
+          fi
           if [ -f cyclone-probe.log ]; then
             DATA=$(tail -4 cyclone-probe.log); DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Cyclone in-world probe%0A$DATA"
@@ -317,6 +343,13 @@ jobs:
         run: |
           if [ -f client-baseline.png ]; then
             python3 scripts/annotate_client_screen.py client-baseline.png || echo '::warning::Baseline thumbnail unavailable'
+          fi
+      - name: Show native PMWeather wedge preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f native-vortex-screen.png ]; then
+            python3 scripts/annotate_client_screen.py native-vortex-screen.png || echo '::warning::Native funnel thumbnail unavailable'
           fi
       - name: Show native cyclone client preview in separate check annotations
         if: always()
@@ -346,6 +379,7 @@ jobs:
           path: |
             client-screen.png
             client-baseline.png
+            native-vortex-screen.png
             cyclone-screen.png
             sprite-screen.png
             whirlpool-screen.png
