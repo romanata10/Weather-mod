@@ -74,8 +74,11 @@ public final class SkyPhenomena {
                 double y=crownY-t*(36+(strand%4)*4);
                 double z=z0+zoffset+Math.cos(t*7+strand)*t*2;
                 broadcastSky(level,sprite.focus,red,x,y,z,1,0,0,0,0);
-                if(step>=6 && step<16 && step%4==2)for(int twig=1;twig<=3;twig++)
-                    broadcastSky(level,sprite.focus,red,x+(twig*2.0)*(strand%2==0?1:-1),y-twig*1.5,z+twig*.8,1,0,0,0,0);
+                if(step>=5 && step<18 && step%5==0)for(int twig=1;twig<=4;twig++) {
+                    double direction=strand%2==0?1:-1;
+                    broadcastSky(level,sprite.focus,red,x+twig*3.2*direction,
+                        y-twig*(1.0+strand%3*.35),z+twig*.8,1,0,0,0,0);
+                }
             }
             broadcastSky(level,sprite.focus,red,x0+offset,crownY+3,z0+zoffset,1,0,0,0,0);
         }
