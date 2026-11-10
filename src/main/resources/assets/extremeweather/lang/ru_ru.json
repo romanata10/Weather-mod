@@ -3,7 +3,7 @@
   "message.extremeweather.clear": "Небо чистое / погода сброшена",
   "message.extremeweather.radar": "%s на расстоянии %s блоков",
   "message.extremeweather.wind": "Скорость ветра: %s блоков/тик",
-  "message.extremeweather.pressure": "Давление: %s гПа",
+  "message.extremeweather.pressure": "Штормов в радиусе 256 блоков: %s (давление недоступно)",
   "message.extremeweather.warning": "Рядом шторм! Укройтесь!",
   "message.extremeweather.permission": "Нужны права оператора",
   "message.extremeweather.spawned": "Суперячейка создана",

@@ -59,7 +59,9 @@ public final class EWBlocks {
                     }
                     case "pressure" -> {
                         int count=NearbyStorms.get(server).stormsNearBlock(pos,256).size();
-                        player.displayClientMessage(Component.translatable("message.extremeweather.pressure",1013-Math.min(90,count*25)),true);
+                        // PMWeatherAPI does not expose physical pressure here. Never
+                        // fabricate hPa from a storm count and present it as a sensor.
+                        player.displayClientMessage(Component.translatable("message.extremeweather.pressure",count),true);
                     }
                 }
             }

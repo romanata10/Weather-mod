@@ -3,7 +3,7 @@
   "message.extremeweather.clear": "Sky clear / weather reset",
   "message.extremeweather.radar": "%s at %s blocks",
   "message.extremeweather.wind": "Wind speed: %s blocks/tick",
-  "message.extremeweather.pressure": "Pressure: %s hPa",
+  "message.extremeweather.pressure": "Storms within 256 blocks: %s (pressure unavailable)",
   "message.extremeweather.warning": "Storm nearby! Take shelter!",
   "message.extremeweather.permission": "Operator permission required",
   "message.extremeweather.spawned": "Supercell created",
