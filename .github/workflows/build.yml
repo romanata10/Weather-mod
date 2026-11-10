@@ -53,8 +53,12 @@ jobs:
           for path in pathlib.Path('src/main/resources/assets/extremeweather/particles').glob('*.json'):
               for texture in json.loads(path.read_text())['textures']:
                   namespace,name=texture.split(':',1)
-                  assert f'assets/{namespace}/textures/particle/{name}.png' in names, texture
-          print('PMWeather particle texture resource IDs validated against dependency JAR')
+                  resource=f'assets/{namespace}/textures/particle/{name}.png'
+                  if namespace=='pmweather':
+                      assert resource in names, texture
+                  else:
+                      assert pathlib.Path('src/main/resources',resource).is_file(), texture
+          print('PMWeather dependency and original addon particle texture IDs validated')
           PYVALIDATE
           }
       - name: Dedicated server and PMWeather command integration test
