@@ -63,8 +63,10 @@ public final class TropicalSystems {
                     if(level.random.nextInt(5)==0)
                         com.extremeweather.compat.PMStormBridge.supercell(level,system.center.add(36,0,24));
                 }
-                if(ticks%40==0)system.weakenNativeStorm();
             }
+            // Keep the actual PM cloud wide over water and gradually shrink
+            // its synchronized native geometry with the weakening landfall.
+            if(ticks%40==0)system.updateNativeStorm(ocean);
             system.render(level,ticks);
             if(ticks%40==0)system.gust(level,wind);
             // A very rare pressure-driven meteotsunami, not a seismic earthquake.
@@ -122,11 +124,22 @@ public final class TropicalSystems {
         System(Storm storm,Basin basin,int life){
             this.storm=storm;this.center=storm.position;this.basin=basin;this.life=life;
         }
-        void weakenNativeStorm() {
-            // Reduce the actual PMWeather wind fields, not just addon gust strength.
-            storm.cycloneWindspeed*=.95f;
-            storm.smoothWindspeed*=.95f;
-            if(storm.maxWindspeed>20)storm.maxWindspeed=Math.max(20,(int)(storm.maxWindspeed*.95));
+        void updateNativeStorm(boolean ocean) {
+            if(ocean) {
+                storm.width=Math.max(storm.width,220f);
+                storm.smoothWidth=Math.max(storm.smoothWidth,220f);
+                storm.maxWidth=Math.max(storm.maxWidth,240);
+            } else {
+                // Decay wind AND the one PMWeather cloud; otherwise a cyclone
+                // retains a giant rotating cloud at minimum post-landfall power.
+                float target=(float)Math.max(36,220*power);
+                storm.width=Math.min(storm.width,target);
+                storm.smoothWidth=Math.min(storm.smoothWidth,target);
+                storm.maxWidth=Math.min(storm.maxWidth,Math.max(40,Math.round(target)));
+                storm.cycloneWindspeed*=.95f;
+                storm.smoothWindspeed*=.95f;
+                if(storm.maxWindspeed>20)storm.maxWindspeed=Math.max(20,(int)(storm.maxWindspeed*.95));
+            }
             if(storm.weatherHandler instanceof WeatherHandlerServer handler)handler.syncStormUpdate(storm);
         }
         void render(ServerLevel level,long ticks) {
