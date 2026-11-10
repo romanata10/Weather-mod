@@ -133,6 +133,7 @@ public final class DisasterEngine {
     public double weakestCyclonePower(){return tropical.weakestPower();}
     public int widestNativeCycloneWidth(){return tropical.widestNativeWidth();}
     public int activeSmallVortices(){return whirls.size();}
+    public int activeSprites(){return sky.activeSprites();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
     public EffectResult trigger(ServerLevel level,Vec3 position,String effect) {

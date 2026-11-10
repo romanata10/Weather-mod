@@ -23,6 +23,7 @@ public final class SkyPhenomena {
         new Vector3f(.16f,.47f,1f), new Vector3f(.58f,.24f,.9f)
     };
     private final List<Ball> balls = new ArrayList<>();
+    private final List<Sprite> sprites = new ArrayList<>();
 
     /** Draw a double bow with colored dust rather than uncolored end-rod sparks. */
     public void rainbow(ServerLevel level, Vec3 origin) {
@@ -42,7 +43,7 @@ public final class SkyPhenomena {
      * reference for crown-and-tendril geometry, not an asset copied into the mod. */
     public boolean sprite(ServerLevel level, BlockPos origin) {
         long time=level.getDayTime()%24000;
-        if(time<13000 || time>23000)return false;
+        if(time<13000 || time>23000 || sprites.size()>=3)return false;
         // PMWeather places cloud centers high above the terrain: a spherical
         // range check against the player's Y rejects storms directly overhead.
         var cloud=net.nullved.pmweatherapi.storm.NearbyStorms.get(level)
@@ -51,28 +52,42 @@ public final class SkyPhenomena {
             .min(java.util.Comparator.comparingDouble(storm->Math.hypot(storm.position.x-origin.getX(),storm.position.z-origin.getZ())))
             .orElse(null);
         if(cloud==null)return false;
-        double x0=cloud.position.x,z0=cloud.position.z;
-        double crownY=Math.max(170,cloud.position.y+82);
-        Vec3 focus=Vec3.atCenterOf(origin);
-        // Diffuse crimson upper glow and seven crooked, branching downward filaments.
+        Sprite sprite=new Sprite(cloud,Vec3.atCenterOf(origin));
+        sprites.add(sprite);
+        emitSprite(level,sprite);
+        return true;
+    }
+
+    /** Re-emit a bounded cloud-anchored crown and crooked tendrils for three
+     * seconds: one-shot vanilla dust particles disappear before players can
+     * turn toward a sprite. This remains particle geometry, not PM's shader. */
+    private void emitSprite(ServerLevel level,Sprite sprite) {
+        double x0=sprite.cloud.position.x,z0=sprite.cloud.position.z;
+        double crownY=Math.min(level.getMaxBuildHeight()-8,Math.max(170,sprite.cloud.position.y+82));
         var red=new DustParticleOptions(new Vector3f(1f,.07f,.11f),2f);
         var pink=new DustParticleOptions(new Vector3f(1f,.27f,.20f),1.25f);
         for(int strand=0;strand<9;strand++) {
             double offset=(strand-4)*3.0;
             double zoffset=Math.sin(strand*2.7)*5;
-            for(int step=0;step<22;step++) {
+            for(int step=0;step<22;step+=2) {
                 double t=step/21d;
                 double x=x0+offset+Math.sin(t*9+strand)*t*3;
                 double y=crownY-t*(36+(strand%4)*4);
                 double z=z0+zoffset+Math.cos(t*7+strand)*t*2;
-                broadcastSky(level,focus,step<6?red:pink,x,y,z,step<5?3:1,1.1,.6,1.1,.01);
-                if(step>=5 && step<16 && step%3==0)for(int twig=1;twig<=3;twig++)
-                    broadcastSky(level,focus,pink,x+(twig*1.7)*(strand%2==0?1:-1),y-twig*1.3,z+twig*.8,1,.2,.1,.2,0);
+                broadcastSky(level,sprite.focus,step<6?red:pink,x,y,z,step<5?2:1,.8,.5,.8,.01);
+                if(step>=6 && step<16 && step%4==2)for(int twig=1;twig<=3;twig++)
+                    broadcastSky(level,sprite.focus,pink,x+(twig*1.7)*(strand%2==0?1:-1),y-twig*1.3,z+twig*.8,1,.2,.1,.2,0);
             }
-            broadcastSky(level,focus,red,x0+offset,crownY+3,z0+zoffset,12,2,4,2,.012);
+            broadcastSky(level,sprite.focus,red,x0+offset,crownY+3,z0+zoffset,5,2,3,2,.012);
         }
-        return true;
     }
+    private static final class Sprite {
+        final dev.protomanly.pmweather.weather.Storm cloud;
+        final Vec3 focus;
+        int age;
+        Sprite(dev.protomanly.pmweather.weather.Storm cloud,Vec3 focus){this.cloud=cloud;this.focus=focus;}
+    }
+    public int activeSprites(){return sprites.size();}
 
     /** Normal server particle delivery culls after 32 blocks; bows and sprites
      * are 60–110 blocks away from the player, so request long-distance delivery. */
@@ -85,9 +100,14 @@ public final class SkyPhenomena {
     public void spawnBall(ServerLevel level, Vec3 position) {
         if(balls.size()<8)balls.add(new Ball(position,level.random.nextDouble()*Math.PI*2));
     }
-    public void clear(){balls.clear();}
+    public void clear(){balls.clear();sprites.clear();}
     public boolean canSpawnBall(){return balls.size()<8;}
     public void tick(ServerLevel level) {
+        for(Iterator<Sprite> it=sprites.iterator();it.hasNext();) {
+            Sprite sprite=it.next();
+            if(++sprite.age>30 || sprite.cloud.dead) {it.remove();continue;}
+            if(sprite.age%2==0)emitSprite(level,sprite);
+        }
         Iterator<Ball> it=balls.iterator();
         while(it.hasNext()) {
             Ball ball=it.next();
