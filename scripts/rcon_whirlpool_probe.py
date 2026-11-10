@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CI-only: build a temporary water pool and inspect the addon whirlpool."""
-import socket,struct,sys,time
+import socket,struct,sys,time,re
 
 def exact(sock,count):
     data=b''
@@ -33,8 +33,12 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     print('whirlpool:',whirl,flush=True)
     if 'Started whirlpool' not in whirl:
         raise AssertionError('Failed to start whirlpool over temporary water pool')
-    time.sleep(1.3)
+    print('submerged cod:',command(sock,10,2,at+'summon minecraft:cod ~3 ~-1 ~'),flush=True)
+    time.sleep(1.7)
     status=command(sock,9,2,'ew status')
     print('whirlpool state:',status,flush=True)
     if 'active whirlpools: 1' not in status:
         raise AssertionError('Whirlpool died before graphical screenshot')
+    match=re.search(r'whirlpool pulls: (\d+)',status)
+    if not match or int(match.group(1))<1:
+        raise AssertionError('No submerged cod was pulled in the joined-client whirlpool world')
