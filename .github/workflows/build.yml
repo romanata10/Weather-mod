@@ -294,6 +294,14 @@ jobs:
             DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Server connection events%0A$DATA"
           fi
+      - name: Verify existing PMWeather cyclone was adopted once
+        if: always()
+        shell: bash
+        run: |
+          if [ -f cyclone-probe.log ]; then
+            DATA=$(tail -3 cyclone-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Native cyclone adoption%0A$DATA"
+          fi
       - name: Show unmodified client baseline in separate check annotations
         if: always()
         shell: bash
