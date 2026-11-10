@@ -31,7 +31,13 @@ float density(vec3 p) {
     float distanceToAxis = length(p.xz);
     float shell = 1.0 - smoothstep(0.03, 0.19, abs(distanceToAxis - radius + swirl));
     float innerMist = 0.18 * (1.0 - smoothstep(0.0, radius, distanceToAxis));
-    float breakup = mix(0.48, 1.0, noise21(vec2(rotation * 1.5, height * 21.0 - GameTime * 20.0)));
+    // Depth-dependent eddies keep the near and far walls from sharing the
+    // same flat silhouette. Sample several scales in the moving dust column.
+    float coarse = noise21(vec2(p.x * 7.0 + p.z * 4.0 + GameTime * 19.0,
+                                height * 13.0 - p.z * 5.0));
+    float fine = noise21(vec2(rotation * 1.5 + p.z * 9.0,
+                              height * 29.0 - GameTime * 24.0));
+    float breakup = mix(0.32, 1.0, coarse * 0.65 + fine * 0.35);
     float skirt = (1.0 - smoothstep(0.02, 0.16, height))
                   * (1.0 - smoothstep(0.14, 0.86, distanceToAxis))
                   * (0.16 + 0.17 * gust);
