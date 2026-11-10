@@ -8,7 +8,8 @@ from PIL import Image
 path=Path(sys.argv[1] if len(sys.argv)>1 else 'client-screen.png')
 prefix=('ClientBaseline' if path.name=='client-baseline.png' else
         'CycloneScreen' if path.name=='cyclone-screen.png' else
-        'SpriteScreen' if path.name=='sprite-screen.png' else 'ClientScreen')
+        'SpriteScreen' if path.name=='sprite-screen.png' else
+        'WhirlpoolScreen' if path.name=='whirlpool-screen.png' else 'ClientScreen')
 if not path.is_file():
     raise SystemExit(0)
 img=Image.open(path).convert('RGB')

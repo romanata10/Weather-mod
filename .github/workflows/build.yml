@@ -159,6 +159,13 @@ jobs:
               fi
               sleep .2
             done
+            for attempt in $(seq 1 30); do
+              if [ -f whirlpool-now ]; then
+                python3 scripts/capture_client.py whirlpool-screen.png > whirlpool-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
             wait "$GAME"
           ' &
           CLIENT_PID=$!
@@ -219,6 +226,18 @@ jobs:
           done
           test -f sprite-screen.png || { echo '::warning::Sprite framebuffer not captured'; exit 1; }
           echo '::notice::Sprite screenshot captured from native storm; branching appearance requires manual review.'
+          python3 scripts/rcon_whirlpool_probe.py "$RCON_PASSWORD" > whirlpool-probe.log 2>&1 || {
+            echo '::warning::Joined-client whirlpool visual probe failed'
+            tail -10 whirlpool-probe.log
+            exit 1
+          }
+          touch whirlpool-now
+          for attempt in $(seq 1 40); do
+            if [ -f whirlpool-screen.png ]; then break; fi
+            sleep .2
+          done
+          test -f whirlpool-screen.png || { echo '::warning::Whirlpool framebuffer missing'; exit 1; }
+          echo '::notice::Whirlpool in-world screenshot captured; visual appearance still needs manual review.'
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash
@@ -249,6 +268,10 @@ jobs:
             fi
           else
             echo "::warning::Client screen capture unavailable: $(cat capture.log 2>/dev/null | head -3)"
+          fi
+          if [ -f whirlpool-probe.log ]; then
+            DATA=$(tail -4 whirlpool-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Whirlpool in-world probe%0A$DATA"
           fi
           if [ -f sprite-probe.log ]; then
             echo "::notice::Sprite timing: $(grep 'sprite: ' sprite-probe.log | tail -1); $(cat sprite-capture.log 2>/dev/null | tail -1)"
@@ -290,6 +313,13 @@ jobs:
           if [ -f sprite-screen.png ]; then
             python3 scripts/annotate_client_screen.py sprite-screen.png || echo '::warning::Sprite thumbnail unavailable'
           fi
+      - name: Show water whirlpool preview in separate check annotations
+        if: always()
+        shell: bash
+        run: |
+          if [ -f whirlpool-screen.png ]; then
+            python3 scripts/annotate_client_screen.py whirlpool-screen.png || echo '::warning::Whirlpool thumbnail unavailable'
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -299,6 +329,7 @@ jobs:
             client-baseline.png
             cyclone-screen.png
             sprite-screen.png
+            whirlpool-screen.png
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
