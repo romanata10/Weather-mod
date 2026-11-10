@@ -75,13 +75,16 @@ public final class EWCommands {
                 int squalls=DisasterEvents.get(level).activeSqualls();
                 int smallVortices=DisasterEvents.get(level).activeSmallVortices();
                 int sprites=DisasterEvents.get(level).activeSprites();
+                int whirlpools=DisasterEvents.get(level).activeWhirlpools();
+                long whirlpoolPulls=DisasterEvents.get(level).whirlpoolPulls();
                 long pushes=DisasterEvents.get(level).squallPushes();
                 int cyclones=DisasterEvents.get(level).activeCyclones();
                 double cyclonePower=DisasterEvents.get(level).weakestCyclonePower();
                 int cycloneWidth=DisasterEvents.get(level).widestNativeCycloneWidth();
                 c.getSource().sendSuccess(()->Component.literal("PMWeather storms nearby: "+count+
                     "; native sub-vortices: "+satellites+"; active squall gusts: "+squalls+
-                    "; active small vortices: "+smallVortices+"; active sprites: "+sprites+"; squall pushes: "+pushes+
+                    "; active small vortices: "+smallVortices+"; active sprites: "+sprites+
+                    "; active whirlpools: "+whirlpools+"; whirlpool pulls: "+whirlpoolPulls+"; squall pushes: "+pushes+
                     "; tracked wildfire blocks: "+fires+"; active cyclone systems: "+cyclones+
                     "; weakest cyclone power: "+String.format(java.util.Locale.ROOT,"%.2f",cyclonePower)+
                     "; widest native cyclone width: "+cycloneWidth),false);

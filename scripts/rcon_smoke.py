@@ -162,6 +162,18 @@ with connection as conn:
     print("restore water:",send(conn,59,2,"setblock 2 63 0 minecraft:water"),flush=True)
     check(60, "execute if block 2 63 0 minecraft:water", "passed")
     check(40, "ew disaster whirlpool 2 64 0", "Started whirlpool")
+    # A real submerged mob, not just a successful command response: verify the
+    # server applied inward/rotational water-only impulses.
+    print("prepare whirlpool pool:",send(conn,108,2,"fill 0 63 -6 8 63 6 minecraft:water"),flush=True)
+    check(109,"execute if block 5 63 0 minecraft:water","passed")
+    print("submerged cod:",send(conn,110,2,"summon minecraft:cod 5 63 0"),flush=True)
+    time.sleep(2)
+    whirl_status=send(conn,111,2,"ew status")
+    print("whirlpool physical status:",whirl_status,flush=True)
+    pull=re.search(r"whirlpool pulls: (\d+)",whirl_status)
+    if not pull or int(pull.group(1))<1:
+        raise AssertionError("Whirlpool did not apply a submerged-entity pull: "+whirl_status)
+    send(conn,112,2,"kill @e[type=minecraft:cod]")
     print("clear crest target:",send(conn,39,2,"setblock 2 64 0 minecraft:air"),flush=True)
     check(36, "ew disaster flood 2 64 0", "Started flood")
     check(37, "execute if block 2 64 0 minecraft:water", "passed")

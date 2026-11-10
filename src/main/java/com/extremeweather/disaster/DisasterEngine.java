@@ -134,6 +134,8 @@ public final class DisasterEngine {
     public int widestNativeCycloneWidth(){return tropical.widestNativeWidth();}
     public int activeSmallVortices(){return whirls.size();}
     public int activeSprites(){return sky.activeSprites();}
+    public int activeWhirlpools(){return whirlpools.size();}
+    public long whirlpoolPulls(){return whirlpools.stream().mapToLong(w->w.pulls).sum();}
     public record EffectResult(boolean started,String reason) {}
     /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
     public EffectResult trigger(ServerLevel level,Vec3 position,String effect) {
@@ -245,7 +247,7 @@ public final class DisasterEngine {
     /** Surface whirlpool: PM foam and authoritative water-only entity movement.
      * It does not claim to be a PMWeather-native fluid renderer. */
     private static final class Whirlpool {
-        final Vec3 center;int age;
+        final Vec3 center;int age;long pulls;
         Whirlpool(Vec3 center){this.center=center;}
         void tick(ServerLevel level) {
             for(int i=0;i<12;i++) {
@@ -261,6 +263,7 @@ public final class DisasterEngine {
                 if(dist<.2 || dist>6.5)continue;
                 entity.push(dx/dist*.045-dz/dist*.09,-.018,dz/dist*.045+dx/dist*.09);
                 entity.hurtMarked=true;
+                pulls++;
             }
         }
     }
