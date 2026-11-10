@@ -81,8 +81,11 @@ public final class TropicalSystems {
      * nearby storm, even if that storm was a supercell or squall. */
     private void adoptNativeCyclones(ServerLevel level) {
         if(level.players().isEmpty())return;
-        var player=level.players().get(level.random.nextInt(level.players().size()));
-        for(Storm storm:NearbyStorms.get(level).stormsNearPlayer(player,512)) {
+        // Inspect each connected player's vicinity. Choosing one random player
+        // per poll made a storm near another player invisible to adoption in
+        // multiplayer until that player happened to be picked.
+        for(var player:level.players())for(Storm storm:NearbyStorms.get(level).stormsNearPlayer(player,512)) {
+            if(systems.size()>=2)return;
             if(!storm.is(StormTypes.CYCLONE) || storm.dead ||
                systems.stream().anyMatch(s->s.storm==storm))continue;
             BlockPos origin=BlockPos.containing(storm.position);
@@ -94,7 +97,6 @@ public final class TropicalSystems {
             com.extremeweather.compat.PMStormBridge.widenCyclone(storm);
             Basin basin=Basin.values()[level.random.nextInt(Basin.values().length)];
             systems.add(new System(storm,basin,500+level.random.nextInt(1100)));
-            if(systems.size()>=2)break;
         }
     }
     private static final class Pulse {
