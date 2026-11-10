@@ -68,12 +68,12 @@ public final class EWCommands {
                 .then(Commands.argument("pos",Vec3Argument.vec3()).executes(c->disaster(c,Vec3Argument.getVec3(c,"pos"))))))
             .then(Commands.literal("status").executes(c->{
                 ServerLevel level=c.getSource().getLevel();
-                int count=NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(c.getSource().getPosition()),4096).size();
-                int satellites=NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(c.getSource().getPosition()),4096)
-                    .stream().mapToInt(storm->storm.vorticies==null?0:storm.vorticies.size()).sum();
-                long nativeCyclones=NearbyStorms.get(level).stormsNearBlock(
-                    BlockPos.containing(c.getSource().getPosition()),4096).stream()
-                    .filter(storm->storm.is(StormTypes.CYCLONE)).count();
+                var nativeStorms=NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(c.getSource().getPosition()),4096);
+                int count=nativeStorms.size();
+                int satellites=nativeStorms.stream().mapToInt(storm->storm.vorticies==null?0:storm.vorticies.size()).sum();
+                long nativeCyclones=nativeStorms.stream().filter(storm->storm.is(StormTypes.CYCLONE)).count();
+                int widestSupercell=nativeStorms.stream().filter(storm->storm.is(StormTypes.SUPERCELL))
+                    .mapToInt(storm->Math.round(storm.width)).max().orElse(0);
                 int fires=FireEvents.active(level);
                 int squalls=DisasterEvents.get(level).activeSqualls();
                 int smallVortices=DisasterEvents.get(level).activeSmallVortices();
@@ -85,7 +85,8 @@ public final class EWCommands {
                 double cyclonePower=DisasterEvents.get(level).weakestCyclonePower();
                 int cycloneWidth=DisasterEvents.get(level).widestNativeCycloneWidth();
                 c.getSource().sendSuccess(()->Component.literal("PMWeather storms nearby: "+count+
-                    "; native sub-vortices: "+satellites+"; active squall gusts: "+squalls+
+                    "; native sub-vortices: "+satellites+"; widest native supercell width: "+widestSupercell+
+                    "; active squall gusts: "+squalls+
                     "; active small vortices: "+smallVortices+"; active sprites: "+sprites+
                     "; active whirlpools: "+whirlpools+"; whirlpool pulls: "+whirlpoolPulls+"; squall pushes: "+pushes+
                     "; tracked wildfire blocks: "+fires+"; native cyclones nearby: "+nativeCyclones+

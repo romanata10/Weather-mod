@@ -85,8 +85,17 @@ with connection as conn:
     print("native vortex state:",reply,flush=True)
     import re
     matched=re.search(r"native sub-vortices: (\d+)",reply)
+    width=re.search(r"widest native supercell width: (\d+)",reply)
     if not matched or int(matched.group(1))<4:
         raise AssertionError("PMWeather storm did not retain four native satellites")
+    if not width or int(width.group(1))<20:
+        raise AssertionError("Native PMWeather funnel width was not applied: "+reply)
+    time.sleep(1.5)
+    later=send(conn,130,2,"execute in minecraft:overworld positioned 0 100 0 run ew status")
+    print("native vortex after server ticks:",later,flush=True)
+    later_width=re.search(r"widest native supercell width: (\d+)",later)
+    if not later_width or int(later_width.group(1))<15:
+        raise AssertionError("Native funnel width collapsed after server ticks: "+later)
     check(27, "execute in minecraft:overworld positioned 0 100 0 run ew status", "PMWeather storms nearby:")
     check(28, "ew clear all", "PMWeather storms and addon weather cleared")
     # Verify the functional storm siren switches its BLOCKSTATE from PMWeather
