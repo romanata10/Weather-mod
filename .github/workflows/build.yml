@@ -41,6 +41,14 @@ jobs:
             exit 1
           }
           tail -30 gradle-build.log
+      - name: Inspect native PMWeather tornado state exposed by installed dependency
+        shell: bash
+        run: |
+          JAR=$(find "$HOME/.gradle" -type f -name 'protomanlys-weather-*.jar' | head -1)
+          test -n "$JAR"
+          javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
+            | grep -Ei '(tornado|stage|width|vortic|funnel|wind)' \
+            | while IFS= read -r line; do echo "::notice::PMWeather Storm API: $line"; done
       - name: Validate runtime PMWeather particle textures
         shell: bash
         run: |
