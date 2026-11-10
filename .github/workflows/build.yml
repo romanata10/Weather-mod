@@ -148,6 +148,13 @@ jobs:
               fi
               sleep 1
             done
+            for attempt in $(seq 1 30); do
+              if [ -f sprite-now ]; then
+                python3 scripts/capture_client.py sprite-screen.png > sprite-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
             wait "$GAME"
           ' &
           CLIENT_PID=$!
@@ -193,6 +200,18 @@ jobs:
           done
           test -f cyclone-screen.png || { echo '::warning::Cyclone framebuffer not captured'; exit 1; }
           echo '::notice::Native cyclone client screenshot captured; visual appearance still needs manual review.'
+          python3 scripts/rcon_sprite_probe.py "$RCON_PASSWORD" > sprite-probe.log 2>&1 || {
+            echo '::warning::Nighttime PMWeather-cloud sprite probe failed'
+            tail -10 sprite-probe.log
+            exit 1
+          }
+          touch sprite-now
+          for attempt in $(seq 1 30); do
+            if [ -f sprite-screen.png ]; then break; fi
+            sleep .2
+          done
+          test -f sprite-screen.png || { echo '::warning::Sprite framebuffer not captured'; exit 1; }
+          echo '::notice::Sprite screenshot captured from native storm; branching appearance requires manual review.'
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash
@@ -224,6 +243,10 @@ jobs:
           else
             echo "::warning::Client screen capture unavailable: $(cat capture.log 2>/dev/null | head -3)"
           fi
+          if [ -f sprite-probe.log ]; then
+            DATA=$(tail -3 sprite-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Sprite in-world probe%0A$DATA"
+          fi
           if [ -f cyclone-probe.log ]; then
             DATA=$(tail -4 cyclone-probe.log); DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Cyclone in-world probe%0A$DATA"
@@ -247,6 +270,13 @@ jobs:
           if [ -f cyclone-screen.png ]; then
             python3 scripts/annotate_client_screen.py cyclone-screen.png || echo '::warning::Cyclone thumbnail unavailable'
           fi
+      - name: Show PMWeather-cloud sprite preview in separate check annotations
+        if: always()
+        shell: bash
+        run: |
+          if [ -f sprite-screen.png ]; then
+            python3 scripts/annotate_client_screen.py sprite-screen.png || echo '::warning::Sprite thumbnail unavailable'
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -255,6 +285,7 @@ jobs:
             client-screen.png
             client-baseline.png
             cyclone-screen.png
+            sprite-screen.png
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
