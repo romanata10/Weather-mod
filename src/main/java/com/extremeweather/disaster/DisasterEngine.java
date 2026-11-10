@@ -250,12 +250,15 @@ public final class DisasterEngine {
         final Vec3 center;int age;long pulls;
         Whirlpool(Vec3 center){this.center=center;}
         void tick(ServerLevel level) {
-            for(int i=0;i<12;i++) {
-                double angle=i*Math.PI/6+age*.22, radius=2.5+(i%3)*1.8;
+            // Three connected spirals, not scattered alternating foam rings.
+            // The same age phase rotates every arm around the actual water drain.
+            for(int arm=0;arm<3;arm++)for(int sample=0;sample<16;sample++) {
+                double radius=.75+sample*.36;
+                double angle=arm*Math.PI*2/3 + sample*.48 + age*.22;
                 double x=center.x+Math.cos(angle)*radius,z=center.z+Math.sin(angle)*radius;
                 BlockPos below=BlockPos.containing(x,center.y-1,z);
                 if(level.hasChunkAt(below) && level.getFluidState(below).is(FluidTags.WATER))
-                    level.sendParticles(ModParticleTypes.FOAM.get(),x,center.y+.1,z,2,.1,.1,.1,.01);
+                    level.sendParticles(ModParticleTypes.FOAM.get(),x,center.y+.1,z,1,0,0,0,0);
             }
             if(age%4!=0)return;
             for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,
