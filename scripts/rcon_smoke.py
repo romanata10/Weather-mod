@@ -92,13 +92,17 @@ with connection as conn:
     # Verify the functional storm siren switches its BLOCKSTATE from PMWeather
     # storms, rather than merely existing as a decorative crafted block.
     check(120,"setblock 4 70 0 extremeweather:storm_siren","block")
+    check(126,"setblock 5 70 0 minecraft:redstone_lamp","block")
     check(121,"execute if block 4 70 0 extremeweather:storm_siren[active=false]","passed")
+    check(127,"execute if block 5 70 0 minecraft:redstone_lamp[lit=false]","passed")
     check(122,"execute positioned 4 100 0 run ew storm supercell 70","Spawned PMWeather storm")
     time.sleep(1.4)
     check(123,"execute if block 4 70 0 extremeweather:storm_siren[active=true]","passed")
+    check(128,"execute if block 5 70 0 minecraft:redstone_lamp[lit=true]","passed")
     check(124,"ew clear all","PMWeather storms and addon weather cleared")
     time.sleep(1.4)
     check(125,"execute if block 4 70 0 extremeweather:storm_siren[active=false]","passed")
+    check(129,"execute if block 5 70 0 minecraft:redstone_lamp[lit=false]","passed")
     check(29, "ew disaster hail 0 70 0", "Started hail")
     check(30, "ew disaster squall 0 100 0", "Started squall")
     check(46, "execute positioned 0 100 0 run ew status", "active squall gusts: 1")
