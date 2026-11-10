@@ -227,7 +227,10 @@ jobs:
             fi
           else
             echo '::warning::Native PMWeather wedge staging failed'
-            tail -8 native-vortex-probe.log
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::warning::Native funnel probe: $line"
+            done < <(tail -8 native-vortex-probe.log)
           fi
           python3 scripts/rcon_cyclone_probe.py "$RCON_PASSWORD" > cyclone-probe.log 2>&1 || {
             echo '::warning::Native cyclone client probe failed'
