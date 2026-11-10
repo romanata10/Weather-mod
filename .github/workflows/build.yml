@@ -49,8 +49,10 @@ jobs:
           javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
             | grep -Ei '(tornado|stage|width|vortic|funnel|wind)' \
             | while IFS= read -r line; do echo "::notice::PMWeather Storm API: $line"; done
-          jar tf "$JAR" | grep -Ei '(supercell|tornado).*\.class$' | head -25 \
-            | while IFS= read -r line; do echo "::notice::PMWeather funnel class: $line"; done
+          jar tf "$JAR" | grep -E 'weather/storms/[^/]+\.class$' | head -30 \
+            | while IFS= read -r line; do echo "::notice::PMWeather storm class: $line"; done
+          javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm | head -100 \
+            | while IFS= read -r line; do echo "::notice::PMWeather Storm member: $line"; done
       - name: Validate runtime PMWeather particle textures
         shell: bash
         run: |
