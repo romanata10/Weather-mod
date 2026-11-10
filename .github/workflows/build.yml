@@ -224,6 +224,10 @@ jobs:
           else
             echo "::warning::Client screen capture unavailable: $(cat capture.log 2>/dev/null | head -3)"
           fi
+          if [ -f cyclone-probe.log ]; then
+            DATA=$(tail -4 cyclone-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Cyclone in-world probe%0A$DATA"
+          fi
           if [ -f visual-server.log ]; then
             DATA=$(grep -Ei '(Done \(|joined the game|left the game|disconnect|error|exception)' visual-server.log | tail -9 || true)
             DATA=${DATA//$'\n'/'%0A'}
