@@ -32,7 +32,7 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     if 'Spawned PMWeather storm' not in storm:
         raise AssertionError('No native thunderstorm for sprite')
     sprite=command(sock,6,2,place+'ew disaster sprite')
-    print('sprite:',sprite,'issued at',datetime.now(timezone.utc).isoformat(),flush=True)
+    print('sprite:',sprite.replace('\n',' '),'issued at',datetime.now(timezone.utc).isoformat(),flush=True)
     if 'Started sprite' not in sprite:
         raise AssertionError('Sprite rejected despite native storm and night')
     status=command(sock,7,2,'ew status')
