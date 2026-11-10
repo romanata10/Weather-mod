@@ -49,9 +49,9 @@ jobs:
           javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
             | grep -Ei '(tornado|stage|width|vortic|funnel|wind)' \
             | while IFS= read -r line; do echo "::notice::PMWeather Storm API: $line"; done
-          MEMBERS=$(javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
-            | grep -Ei '(stage|tornad|intensity|growth|level|boolean|stormType|update\()' | head -35)
-          echo "::notice::Native storm lifecycle fields%0A${MEMBERS//$'\n'/'%0A'}"
+          javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
+            | grep -Ei '(stage|tornad|intensity|growth|stormType|phase)' | head -12 \
+            | while IFS= read -r line; do echo "::notice title=NativeLifecycle::$line"; done
       - name: Validate runtime PMWeather particle textures
         shell: bash
         run: |
