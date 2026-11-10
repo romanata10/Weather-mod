@@ -174,6 +174,10 @@ with connection as conn:
     if not pull or int(pull.group(1))<1:
         raise AssertionError("Whirlpool did not apply a submerged-entity pull: "+whirl_status)
     send(conn,112,2,"kill @e[type=minecraft:cod]")
+    print("drain whirlpool center:",send(conn,113,2,"setblock 2 63 0 minecraft:air"),flush=True)
+    time.sleep(.6)
+    check(114,"ew status","active whirlpools: 0")
+    check(115,"setblock 2 63 0 minecraft:water","block")
     print("clear crest target:",send(conn,39,2,"setblock 2 64 0 minecraft:air"),flush=True)
     check(36, "ew disaster flood 2 64 0", "Started flood")
     check(37, "execute if block 2 64 0 minecraft:water", "passed")

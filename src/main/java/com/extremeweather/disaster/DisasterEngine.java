@@ -253,7 +253,9 @@ public final class DisasterEngine {
             for(int i=0;i<12;i++) {
                 double angle=i*Math.PI/6+age*.22, radius=2.5+(i%3)*1.8;
                 double x=center.x+Math.cos(angle)*radius,z=center.z+Math.sin(angle)*radius;
-                level.sendParticles(ModParticleTypes.FOAM.get(),x,center.y+.1,z,2,.1,.1,.1,.01);
+                BlockPos below=BlockPos.containing(x,center.y-1,z);
+                if(level.hasChunkAt(below) && level.getFluidState(below).is(FluidTags.WATER))
+                    level.sendParticles(ModParticleTypes.FOAM.get(),x,center.y+.1,z,2,.1,.1,.1,.01);
             }
             if(age%4!=0)return;
             for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,
