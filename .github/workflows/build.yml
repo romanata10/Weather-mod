@@ -58,7 +58,16 @@ jobs:
                       assert resource in names, texture
                   else:
                       assert pathlib.Path('src/main/resources',resource).is_file(), texture
-          print('PMWeather dependency and original addon particle texture IDs validated')
+          assets=pathlib.Path('src/main/resources/assets/extremeweather')
+          siren=json.loads((assets/'blockstates/storm_siren.json').read_text())['variants']
+          assert siren['active=true']['model'] != siren['active=false']['model']
+          for variant in siren.values():
+              model_id=variant['model'].split(':',1)[1]
+              model=json.loads((assets/'models'/f'{model_id}.json').read_text())
+              for texture in model['textures'].values():
+                  namespace,name=texture.split(':',1)
+                  assert pathlib.Path('src/main/resources/assets',namespace,'textures',f'{name}.png').is_file(),texture
+          print('PMWeather particle IDs and both siren model textures validated')
           PYVALIDATE
           }
       - name: Dedicated server and PMWeather command integration test
