@@ -325,6 +325,12 @@ jobs:
               grep -F 'ExtremeWeather client native funnel geometry:' client-smoke.log | tail -4 | while IFS= read -r line; do
                 echo "::notice::Joined client native geometry: $line"
               done
+              grep -F 'ExtremeWeather joined client applied authoritative taper:' client-smoke.log | tail -4 | while IFS= read -r line; do
+                echo "::notice::Joined client taper override: $line"
+              done
+              if [ "$(grep -Fc 'ExtremeWeather joined client applied authoritative taper:' client-smoke.log)" -lt 2 ]; then
+                echo '::warning::Native shape packets did not visibly reach both staged client funnels.'
+              fi
               if [ "$(grep -Fc 'ExtremeWeather client native funnel geometry:' client-smoke.log)" -lt 2 ]; then
                 echo '::warning::Joined client did not report both narrow and wide native storm parameters.'
               fi

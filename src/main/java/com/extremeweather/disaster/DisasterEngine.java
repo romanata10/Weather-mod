@@ -81,7 +81,15 @@ public final class DisasterEngine {
                 entry.getKey().tornadoShape,entry.getKey().width))
             .orElse("none");
     }
-    private void maintainNativeFunnels() {
+    private static void syncNativeShape(ServerLevel level,dev.protomanly.pmweather.weather.Storm storm) {
+        if(storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
+            handler.syncStormUpdate(storm);
+        for(ServerPlayer player:level.players())if(storm.position!=null &&
+            storm.position.distanceToSqr(player.position())<512*512)
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                new com.extremeweather.compat.FunnelShapePacket(storm.ID,storm.tornadoShape));
+    }
+    private void maintainNativeFunnels(ServerLevel level) {
         for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {
             var entry=it.next();var storm=entry.getKey();var preset=entry.getValue();
             if(storm.dead || ticks>=preset.expires() ||
@@ -95,8 +103,7 @@ public final class DisasterEngine {
                 float rope=com.extremeweather.vortex.FunnelShape.ROPE.nativeTaper();
                 float target=rope+(preset.shape()-rope)*maturity;
                 if(Math.abs(storm.tornadoShape-target)>.01f)storm.tornadoShape=target;
-                if(ticks%20==0 && storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
-                    handler.syncStormUpdate(storm);
+                if(ticks%20==0)syncNativeShape(level,storm);
                 continue;
             }
             if(storm.width<preset.width() || storm.smoothWidth<preset.width() ||
@@ -109,15 +116,14 @@ public final class DisasterEngine {
                 storm.maxWindspeed=Math.max(storm.maxWindspeed,preset.windspeed());
                 storm.tornadoShape=preset.shape();
             }
-            if(ticks%20==0 && storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
-                handler.syncStormUpdate(storm);
+            if(ticks%20==0)syncNativeShape(level,storm);
         }
     }
     private long ticks;
 
     public void tick(ServerLevel level) {
         ticks++;
-        maintainNativeFunnels();
+        maintainNativeFunnels(level);
         manual.tick(level);
         tropical.tick(level);
         if(ticks%5==0)for(Iterator<HailField> it=hailFields.iterator();it.hasNext();) {
