@@ -270,8 +270,16 @@ with connection as conn:
     check(181,"setblock 4100 63 8 minecraft:water","block")
     send(conn,175,2,"fill 4097 64 5 4103 64 11 minecraft:air")
     check(176,"ew disaster flood 4100 64 8","Started flood")
-    time.sleep(1.2)
-    check(177,"execute if block 4101 64 8 minecraft:water","passed")
+    # Force a vanilla neighbor update beside the temporary source; a remote
+    # force-loaded chunk with no players need not otherwise tick fluid soon.
+    send(conn,182,2,"setblock 4101 64 8 minecraft:stone")
+    send(conn,183,2,"setblock 4101 64 8 minecraft:air")
+    flowed=False
+    for _ in range(12):
+        time.sleep(.5)
+        reply=send(conn,177,2,"execute if block 4101 64 8 minecraft:water")
+        if 'passed' in reply.lower():flowed=True;break
+    if not flowed:raise AssertionError("Temporary source did not spread in test basin; cannot validate rollback")
     check(178,"ew clear all","PMWeather storms and addon weather cleared")
     time.sleep(4)
     check(179,"execute if block 4100 64 8 minecraft:air","passed")
