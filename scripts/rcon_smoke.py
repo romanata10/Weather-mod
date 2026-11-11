@@ -110,6 +110,15 @@ with connection as conn:
         raise AssertionError("Native tornado geometry/wind did not persist: "+sustained)
     check(27, "execute in minecraft:overworld positioned 0 100 0 run ew status", "PMWeather storms nearby:")
     check(28, "ew clear all", "PMWeather storms and addon weather cleared")
+    # EF endpoints must seed nonzero native wind, not just a static cloud.
+    for rating, minimum in ((0, 60), (5, 200)):
+        check(132+rating, f"execute positioned 0 100 0 run ew vortex wedge {rating}", "One native PMWeather supercell")
+        endpoint=send(conn,140+rating,2,"execute positioned 0 100 0 run ew status")
+        print(f"native EF{rating} status:",endpoint,flush=True)
+        endpoint_wind=re.search(r"strongest native supercell wind: (\d+)",endpoint)
+        if not endpoint_wind or int(endpoint_wind.group(1))<minimum:
+            raise AssertionError(f"EF{rating} native wind was not initialized: "+endpoint)
+        check(150+rating,"ew clear all","PMWeather storms and addon weather cleared")
     # Verify the functional storm siren switches its BLOCKSTATE from PMWeather
     # storms, rather than merely existing as a decorative crafted block.
     check(120,"setblock 4 70 0 extremeweather:storm_siren","block")
