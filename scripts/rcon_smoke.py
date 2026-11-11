@@ -262,4 +262,17 @@ with connection as conn:
     check(167,"forceload add 4008 8","force")
     time.sleep(1.5)
     check(168,"execute if block 4008 64 8 minecraft:air","passed")
+    # A contained water floor lets a crest spread into *flowing* water. Check
+    # that vanilla flow actually recedes after we remove its single source.
+    # This does not cover arbitrary shore geometry or crash recovery.
+    check(173,"forceload add 4100 8","force")
+    print("flood test water floor:",send(conn,174,2,"fill 4098 63 6 4102 63 10 minecraft:water"),flush=True)
+    send(conn,175,2,"fill 4097 64 5 4103 64 11 minecraft:air")
+    check(176,"ew disaster flood 4100 64 8","Started flood")
+    time.sleep(1.2)
+    check(177,"execute if block 4101 64 8 minecraft:water","passed")
+    check(178,"ew clear all","PMWeather storms and addon weather cleared")
+    time.sleep(4)
+    check(179,"execute if block 4100 64 8 minecraft:air","passed")
+    check(180,"execute if block 4101 64 8 minecraft:air","passed")
 print("PMWeather storm/tornado and scorched-ground integration tests passed")
