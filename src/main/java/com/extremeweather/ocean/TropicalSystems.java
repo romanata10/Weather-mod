@@ -150,6 +150,9 @@ public final class TropicalSystems {
                     // is still legible with differing particle settings.
                     level.sendParticles(ModParticleTypes.FOAM.get(),x+.5,level.getSeaLevel()+.8,z+.5,7,2,.5,2,.15);
                     level.sendParticles(ParticleTypes.SPLASH,x+.5,level.getSeaLevel()+1.02,z+.5,4,.7,.08,.7,.04);
+                    // Pale low-velocity spray gives the crest contrast on
+                    // dark ocean water without introducing a solid water wall.
+                    level.sendParticles(ParticleTypes.CLOUD,x+.5,level.getSeaLevel()+1.2,z+.5,3,.5,.04,.5,.005);
                     if(level.random.nextInt(4)==0)SurgeData.get(level).place(level,crest,100);
                 }
             }
