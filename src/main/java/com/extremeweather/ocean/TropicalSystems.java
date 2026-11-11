@@ -32,6 +32,7 @@ public final class TropicalSystems {
         systems.add(new System(storm,basin,1200));return true;
     }
     public int count(){return systems.size();}
+    public int activePulses(){return pulses.size();}
     public double weakestPower(){return systems.stream().mapToDouble(s->s.power).min().orElse(1);}
     public int widestNativeWidth(){return systems.stream().mapToInt(s->Math.round(s.storm.width)).max().orElse(0);}
     public boolean spawnPulse(ServerLevel level,Vec3 center) {

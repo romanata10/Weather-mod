@@ -284,4 +284,16 @@ with connection as conn:
     time.sleep(4)
     check(179,"execute if block 4100 64 8 minecraft:air","passed")
     check(180,"execute if block 4101 64 8 minecraft:air","passed")
+    # The current "tsunami" is a bounded ocean-only entity/foam pulse, not
+    # a fluid wall. Prove its cap and immediate /ew clear reset explicitly.
+    print("stage ocean for pulse:",send(conn,184,2,"fillbiome 4004 60 4 4012 80 12 minecraft:ocean"),flush=True)
+    check(185,"execute if biome 4008 64 8 minecraft:ocean","passed")
+    check(186,"ew disaster tsunami 4008 64 8","Started tsunami")
+    check(187,"ew disaster meteotsunami 4008 64 8","Started meteotsunami")
+    check(188,"ew status","active wave pulses: 2")
+    third=send(conn,189,2,"ew disaster tsunami 4008 64 8")
+    print("third wave rejected:",third,flush=True)
+    if 'Wave limit reached' not in third:raise AssertionError("More than two simultaneous wave pulses allowed: "+third)
+    check(190,"ew clear all","PMWeather storms and addon weather cleared")
+    check(191,"ew status","active wave pulses: 0")
 print("PMWeather storm/tornado and scorched-ground integration tests passed")
