@@ -129,6 +129,10 @@ public final class TropicalSystems {
                     // Push each entity outward from the wave origin, not in the
                     // direction of whichever player happened to discover it.
                     double inv=entityRadius<.001?0:1/entityRadius;
+                    Vec3 velocity=entity.getDeltaMovement();
+                    // A front can overlap an entity for several 10-tick samples.
+                    // Do not keep accelerating it without limit each sample.
+                    if(velocity.horizontalDistanceSqr()>=.64)continue;
                     entity.push(ex*inv*.25,.12,ez*inv*.25);entity.hurtMarked=true;
                     pushes++;
                 }
