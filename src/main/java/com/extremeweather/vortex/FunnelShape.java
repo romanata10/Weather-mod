@@ -60,6 +60,15 @@ public enum FunnelShape {
             default -> 0;
         };
     }
+    /** Stable, weighted selection for PMWeather-generated tornadic supercells.
+     * No per-tick dice roll: the same native storm keeps its chosen preset. */
+    public static FunnelShape natural(long stormId) {
+        FunnelShape[] common={ROPE,CONE,CYLINDER,V_SHAPED,CIGAR,CONCAVE_SIDED,
+            STRAIGHT_SIDED,CONVEX_SIDED,TRUNCATED_CONE,WEDGE,LANDSPOUT};
+        int roll=(int)Math.floorMod(stormId ^ (stormId >>> 32),100L);
+        return roll<85?common[Math.floorMod(roll,common.length)]
+            : values()[(int)Math.floorMod((stormId * 0x9e3779b97f4a7c15L) >>> 17,values().length)];
+    }
     public static FunnelShape parse(String text) {
         try{return valueOf(text.toUpperCase(Locale.ROOT).replace('-','_'));}
         catch(IllegalArgumentException e){return null;}

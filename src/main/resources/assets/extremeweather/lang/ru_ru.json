@@ -50,6 +50,6 @@
   "block.extremeweather.charred_grass": "Обугленная трава",
   "block.extremeweather.ash": "Пепел",
   "message.extremeweather.storms": "Штормов в зоне радара: %s",
-  "message.extremeweather.requested_shape": "Запрошенный пресет торнадо: %s (штормов поблизости: %s). Видимый силуэт PMWeather не подтверждён.",
+  "message.extremeweather.requested_shape": "Выбранный пресет торнадо: %s (штормов поблизости: %s). Видимый силуэт PMWeather не подтверждён.",
   "message.extremeweather.storms_unknown_shape": "Штормов поблизости: %s; форма неизвестна (шторм PMWeather не отслеживается)."
 }

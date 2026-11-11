@@ -37,14 +37,30 @@ public final class DisasterEngine {
     private final com.extremeweather.vortex.ManualVortices manual=new com.extremeweather.vortex.ManualVortices();
     private final com.extremeweather.ocean.TropicalSystems tropical=new com.extremeweather.ocean.TropicalSystems();
     private final Map<UUID,Long> lastStorm=new HashMap<>();
-    // Only explicitly requested native PM funnels: PMWeather may reset width
-    // to its default 10 on later ticks. Keep the SAME storm, never a duplicate.
+    // Explicit funnels retain their command geometry; naturally adopted
+    // PMWeather funnels only receive an outline parameter, never extra wind.
     private final Map<dev.protomanly.pmweather.weather.Storm,NativeFunnel> nativeFunnels=new IdentityHashMap<>();
-    private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long expires) {}
+    private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long expires,boolean natural) {}
     public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm,com.extremeweather.vortex.FunnelShape requested) {
-        nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks+1200));
+        nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks+1200,false));
     }
-    /** This is the requested preset, NOT proof of the client's rendered outline. */
+    private void adoptNaturalFunnels(ServerLevel level) {
+        if(nativeFunnels.size()>=16)return;
+        for(ServerPlayer player:level.players())for(var storm:NearbyStorms.get(level).stormsNearPlayer(player,512)) {
+            if(nativeFunnels.size()>=16)return;
+            // Never turn an ordinary thundercloud into a tornado. Wait until
+            // PMWeather itself has raised both its supercell stage and wind.
+            if(storm.dead || !storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
+                || storm.stage<3 || storm.windspeed<65 || nativeFunnels.containsKey(storm))continue;
+            var shape=com.extremeweather.vortex.FunnelShape.natural(storm.ID);
+            storm.tornadoShape=shape.nativeTaper();
+            nativeFunnels.put(storm,new NativeFunnel(shape,storm.width,storm.tornadoShape,
+                storm.maxWidth,storm.windspeed,ticks+1200,true));
+            if(storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
+                handler.syncStormUpdate(storm);
+        }
+    }
+    /** This is a selected preset, NOT proof of the client's rendered outline. */
     public Optional<com.extremeweather.vortex.FunnelShape> requestedNativeShapeNear(Vec3 pos,double range) {
         return nativeFunnels.entrySet().stream()
             .filter(entry->!entry.getKey().dead && ticks<entry.getValue().expires()
@@ -55,7 +71,15 @@ public final class DisasterEngine {
     private void maintainNativeFunnels() {
         for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {
             var entry=it.next();var storm=entry.getKey();var preset=entry.getValue();
-            if(storm.dead || ticks>=preset.expires()) {it.remove();continue;}
+            if(storm.dead || ticks>=preset.expires() ||
+                (preset.natural() && (storm.stage<3 || storm.windspeed<65))) {it.remove();continue;}
+            if(preset.natural()) {
+                // PMWeather owns natural growth, weakening and cloud width.
+                if(storm.tornadoShape!=preset.shape())storm.tornadoShape=preset.shape();
+                if(ticks%20==0 && storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
+                    handler.syncStormUpdate(storm);
+                continue;
+            }
             if(storm.width<preset.width() || storm.smoothWidth<preset.width() ||
                storm.maxWidth<preset.maxWidth() || storm.windspeed<preset.windspeed() ||
                storm.maxWindspeed<preset.windspeed() || storm.tornadoShape!=preset.shape()) {
@@ -108,6 +132,7 @@ public final class DisasterEngine {
             }
         }
         if(ticks%40!=0)return;
+        adoptNaturalFunnels(level);
         for(ServerPlayer player:level.players()) {
             if(!level.hasChunkAt(player.blockPosition()))continue;
             var storms=NearbyStorms.get(level).stormsNearPlayer(player,512);
