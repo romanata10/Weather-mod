@@ -41,17 +41,6 @@ jobs:
             exit 1
           }
           tail -30 gradle-build.log
-      - name: Inspect native PMWeather tornado state exposed by installed dependency
-        shell: bash
-        run: |
-          JAR=$(find "$HOME/.gradle" -type f -name 'protomanlys-weather-*.jar' | head -1)
-          test -n "$JAR"
-          javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
-            | grep -Ei '(tornado|stage|width|vortic|funnel|wind)' \
-            | while IFS= read -r line; do echo "::notice::PMWeather Storm API: $line"; done
-          javap -classpath "$JAR" -p dev.protomanly.pmweather.weather.Storm \
-            | grep -Ei '(stage|tornad|intensity|growth|stormType|phase)' | head -12 \
-            | while IFS= read -r line; do echo "::notice title=NativeLifecycle::$line"; done
       - name: Validate runtime PMWeather particle textures
         shell: bash
         run: |
@@ -174,6 +163,13 @@ jobs:
               fi
               sleep .2
             done
+            for attempt in $(seq 1 100); do
+              if [ -f native-rope-now ]; then
+                python3 scripts/capture_client.py native-rope-screen.png > native-rope-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
             for attempt in $(seq 1 30); do
               if [ -f cyclone-now ]; then
                 python3 scripts/capture_client.py cyclone-screen.png > cyclone-capture.log 2>&1 || true
@@ -244,6 +240,21 @@ jobs:
               line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
               echo "::warning::Native funnel probe: $line"
             done < <(tail -8 native-vortex-probe.log)
+          fi
+          if python3 scripts/rcon_native_vortex_probe.py "$RCON_PASSWORD" rope > native-rope-probe.log 2>&1; then
+            touch native-rope-now
+            for attempt in $(seq 1 60); do
+              if [ -f native-rope-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f native-rope-screen.png ]; then
+              echo '::notice::Native PMWeather rope framebuffer captured for visual comparison with wedge; shapes require manual review.'
+            else
+              echo '::warning::Native PMWeather rope framebuffer unavailable'
+            fi
+          else
+            echo '::warning::Native PMWeather rope staging failed'
+            while IFS= read -r line; do echo "::warning::Rope probe: $line"; done < <(tail -5 native-rope-probe.log)
           fi
           python3 scripts/rcon_cyclone_probe.py "$RCON_PASSWORD" > cyclone-probe.log 2>&1 || {
             echo '::warning::Native cyclone client probe failed'
@@ -367,6 +378,13 @@ jobs:
           if [ -f native-vortex-screen.png ]; then
             python3 scripts/annotate_client_screen.py native-vortex-screen.png || echo '::warning::Native funnel thumbnail unavailable'
           fi
+      - name: Show native PMWeather rope preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f native-rope-screen.png ]; then
+            python3 scripts/annotate_client_screen.py native-rope-screen.png || echo '::warning::Native rope thumbnail unavailable'
+          fi
       - name: Show native cyclone client preview in separate check annotations
         if: always()
         shell: bash
@@ -396,6 +414,7 @@ jobs:
             client-screen.png
             client-baseline.png
             native-vortex-screen.png
+            native-rope-screen.png
             cyclone-screen.png
             sprite-screen.png
             whirlpool-screen.png
