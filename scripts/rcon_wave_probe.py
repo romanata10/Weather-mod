@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Joined-client ocean probe: a real cod must receive the tsunami front impulse."""
 import re
+from pathlib import Path
 import socket
 import struct
 import sys
@@ -57,7 +58,8 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
         match=re.search(r'wave entity pushes: (\d+)',status)
         if match and int(match.group(1))>0:
             print('joined-client wave physical state:',status,flush=True)
-            time.sleep(.4)  # let the foam from a subsequent front tick reach the GPU
+            time.sleep(.2)  # give the joined client a frame after the server impulse
+            Path('wave-now').touch()  # capture while the front is still near the camera
             break
     else:
         raise AssertionError('Wave front never pushed a mob in the ocean basin: '+status)
