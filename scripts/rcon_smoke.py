@@ -238,4 +238,17 @@ with connection as conn:
     check(38, "ew clear all", "PMWeather storms and addon weather cleared")
     time.sleep(1.5)
     check(119,"execute if block 2 64 0 minecraft:air","passed")
+    # A cleanup issued while the crest's chunk is unloaded must keep the
+    # SavedData entry, then remove its own source once the chunk loads again.
+    check(160,"forceload add 40 8","force")
+    check(161,"setblock 40 63 8 minecraft:water","block")
+    send(conn,162,2,"setblock 40 64 8 minecraft:air")
+    check(163,"ew disaster flood 40 64 8","Started flood")
+    check(164,"execute if block 40 64 8 minecraft:water","passed")
+    check(165,"forceload remove 40 8","force")
+    time.sleep(.7)
+    check(166,"ew clear all","PMWeather storms and addon weather cleared")
+    check(167,"forceload add 40 8","force")
+    time.sleep(1.5)
+    check(168,"execute if block 40 64 8 minecraft:air","passed")
 print("PMWeather storm/tornado and scorched-ground integration tests passed")
