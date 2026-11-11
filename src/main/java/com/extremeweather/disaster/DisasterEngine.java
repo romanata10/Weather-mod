@@ -40,19 +40,22 @@ public final class DisasterEngine {
     // Only explicitly requested native PM funnels: PMWeather may reset width
     // to its default 10 on later ticks. Keep the SAME storm, never a duplicate.
     private final Map<dev.protomanly.pmweather.weather.Storm,NativeFunnel> nativeFunnels=new IdentityHashMap<>();
-    private record NativeFunnel(float width,float shape,int maxWidth,long expires) {}
+    private record NativeFunnel(float width,float shape,int maxWidth,int windspeed,long expires) {}
     public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm) {
-        nativeFunnels.put(storm,new NativeFunnel(storm.width,storm.tornadoShape,storm.maxWidth,ticks+1200));
+        nativeFunnels.put(storm,new NativeFunnel(storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks+1200));
     }
     private void maintainNativeFunnels() {
         for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {
             var entry=it.next();var storm=entry.getKey();var preset=entry.getValue();
             if(storm.dead || ticks>=preset.expires()) {it.remove();continue;}
             if(storm.width<preset.width() || storm.smoothWidth<preset.width() ||
-               storm.maxWidth<preset.maxWidth() || storm.tornadoShape!=preset.shape()) {
+               storm.maxWidth<preset.maxWidth() || storm.windspeed<preset.windspeed() ||
+               storm.maxWindspeed<preset.windspeed() || storm.tornadoShape!=preset.shape()) {
                 storm.width=Math.max(storm.width,preset.width());
                 storm.smoothWidth=Math.max(storm.smoothWidth,preset.width());
                 storm.maxWidth=Math.max(storm.maxWidth,preset.maxWidth());
+                storm.windspeed=Math.max(storm.windspeed,preset.windspeed());
+                storm.maxWindspeed=Math.max(storm.maxWindspeed,preset.windspeed());
                 storm.tornadoShape=preset.shape();
             }
             if(ticks%20==0 && storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
