@@ -157,6 +157,7 @@ public final class DisasterEngine {
     public long squallPushes(){return squalls.stream().mapToLong(field->field.pushes).sum();}
     public int activeCyclones(){return tropical.count();}
     public int activeWavePulses(){return tropical.activePulses();}
+    public long wavePushes(){return tropical.wavePushes();}
     public double weakestCyclonePower(){return tropical.weakestPower();}
     public int widestNativeCycloneWidth(){return tropical.widestNativeWidth();}
     public int activeSmallVortices(){return whirls.size();}

@@ -85,6 +85,7 @@ public final class EWCommands {
                 long pushes=DisasterEvents.get(level).squallPushes();
                 int cyclones=DisasterEvents.get(level).activeCyclones();
                 int wavePulses=DisasterEvents.get(level).activeWavePulses();
+                long wavePushes=DisasterEvents.get(level).wavePushes();
                 double cyclonePower=DisasterEvents.get(level).weakestCyclonePower();
                 int cycloneWidth=DisasterEvents.get(level).widestNativeCycloneWidth();
                 c.getSource().sendSuccess(()->Component.literal("PMWeather storms nearby: "+count+
@@ -95,6 +96,7 @@ public final class EWCommands {
                     "; active whirlpools: "+whirlpools+"; whirlpool pulls: "+whirlpoolPulls+"; squall pushes: "+pushes+
                     "; tracked wildfire blocks: "+fires+"; native cyclones nearby: "+nativeCyclones+
                     "; active cyclone systems: "+cyclones+"; active wave pulses: "+wavePulses+
+                    "; wave entity pushes: "+wavePushes+
                     "; weakest cyclone power: "+String.format(java.util.Locale.ROOT,"%.2f",cyclonePower)+
                     "; widest native cyclone width: "+cycloneWidth),false);
                 return 1;

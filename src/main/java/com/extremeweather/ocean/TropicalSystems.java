@@ -33,6 +33,7 @@ public final class TropicalSystems {
     }
     public int count(){return systems.size();}
     public int activePulses(){return pulses.size();}
+    public long wavePushes(){return pulses.stream().mapToLong(p->p.pushes).sum();}
     public double weakestPower(){return systems.stream().mapToDouble(s->s.power).min().orElse(1);}
     public int widestNativeWidth(){return systems.stream().mapToInt(s->Math.round(s.storm.width)).max().orElse(0);}
     public boolean spawnPulse(ServerLevel level,Vec3 center) {
@@ -106,7 +107,7 @@ public final class TropicalSystems {
         }
     }
     private static final class Pulse {
-        final Vec3 center;int age;
+        final Vec3 center;int age;long pushes;
         Pulse(Vec3 center){this.center=center;}
         void tick(ServerLevel level) {
             double radius=8+age*2.0;
@@ -118,10 +119,11 @@ public final class TropicalSystems {
                     Math.atan2(player.getZ()-center.z,player.getX()-center.x);
                 double dx=Math.cos(angle),dz=Math.sin(angle);
                 for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(10))) {
-                    if(entity instanceof net.minecraft.world.entity.player.Player p && p.isCreative())continue;
+                    if(entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
                     double entityRadius=Math.hypot(entity.getX()-center.x,entity.getZ()-center.z);
                     if(Math.abs(entityRadius-radius)>12)continue; // actual moving front
                     entity.push(dx*.25,.12,dz*.25);entity.hurtMarked=true;
+                    pushes++;
                 }
                 for(int i=0;i<8;i++) {
                     // Trace a short tangent along the advancing wavefront,

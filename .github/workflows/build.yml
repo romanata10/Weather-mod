@@ -251,6 +251,13 @@ jobs:
               fi
               sleep .2
             done
+            for attempt in $(seq 1 80); do
+              if [ -f wave-now ]; then
+                python3 scripts/capture_client.py wave-screen.png > wave-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
             wait "$GAME"
           ' &
           CLIENT_PID=$!
@@ -395,6 +402,19 @@ jobs:
           done
           test -f whirlpool-screen.png || { echo '::warning::Whirlpool framebuffer missing'; exit 1; }
           echo '::notice::Whirlpool in-world screenshot captured; visual appearance still needs manual review.'
+          python3 scripts/rcon_wave_probe.py "$RCON_PASSWORD" > wave-probe.log 2>&1 || {
+            echo '::warning::Joined-client tsunami front did not push the staged water mob'
+            while IFS= read -r line; do echo "::warning::Wave probe: $line"; done < <(tail -8 wave-probe.log)
+            exit 1
+          }
+          tail -4 wave-probe.log
+          touch wave-now
+          for attempt in $(seq 1 70); do
+            if [ -f wave-screen.png ]; then break; fi
+            sleep .2
+          done
+          test -f wave-screen.png || { echo '::warning::Wave framebuffer missing'; exit 1; }
+          echo '::notice::Ocean wavefront foam captured with a joined client; appearance needs manual review.'
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash
@@ -517,6 +537,13 @@ jobs:
           if [ -f whirlpool-screen.png ]; then
             python3 scripts/annotate_client_screen.py whirlpool-screen.png || echo '::warning::Whirlpool thumbnail unavailable'
           fi
+      - name: Show ocean wavefront preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f wave-screen.png ]; then
+            python3 scripts/annotate_client_screen.py wave-screen.png || echo '::warning::Wave thumbnail unavailable'
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -531,6 +558,7 @@ jobs:
             cyclone-screen.png
             sprite-screen.png
             whirlpool-screen.png
+            wave-screen.png
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:

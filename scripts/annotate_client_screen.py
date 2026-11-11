@@ -13,7 +13,8 @@ prefix=('ClientBaseline' if path.name=='client-baseline.png' else
         'NativeMultiTopScreen' if path.name=='native-multi-top-screen.png' else
         'CycloneScreen' if path.name=='cyclone-screen.png' else
         'SpriteScreen' if path.name=='sprite-screen.png' else
-        'WhirlpoolScreen' if path.name=='whirlpool-screen.png' else 'ClientScreen')
+        'WhirlpoolScreen' if path.name=='whirlpool-screen.png' else
+        'WaveScreen' if path.name=='wave-screen.png' else 'ClientScreen')
 if not path.is_file():
     raise SystemExit(0)
 img=Image.open(path).convert('RGB')
