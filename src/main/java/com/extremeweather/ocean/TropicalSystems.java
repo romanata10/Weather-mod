@@ -114,16 +114,22 @@ public final class TropicalSystems {
                 double distance=Math.hypot(player.getX()-center.x,player.getZ()-center.z);
                 if(Math.abs(distance-radius)>12 || !level.hasChunkAt(player.blockPosition()))continue;
                 if(!level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN) && player.getY()>level.getSeaLevel()+4)continue;
-                double dx=(player.getX()-center.x)/(distance+.01);
-                double dz=(player.getZ()-center.z)/(distance+.01);
+                double angle=distance<1?level.random.nextDouble()*Math.PI*2:
+                    Math.atan2(player.getZ()-center.z,player.getX()-center.x);
+                double dx=Math.cos(angle),dz=Math.sin(angle);
                 for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(10))) {
                     if(entity instanceof net.minecraft.world.entity.player.Player p && p.isCreative())continue;
+                    double entityRadius=Math.hypot(entity.getX()-center.x,entity.getZ()-center.z);
+                    if(Math.abs(entityRadius-radius)>12)continue; // actual moving front
                     entity.push(dx*.25,.12,dz*.25);entity.hurtMarked=true;
                 }
                 for(int i=0;i<8;i++) {
-                    double theta=level.random.nextDouble()*Math.PI*2;
-                    int x=(int)Math.floor(player.getX()+Math.cos(theta)*10);
-                    int z=(int)Math.floor(player.getZ()+Math.sin(theta)*10);
+                    // Trace a short tangent along the advancing wavefront,
+                    // not a static foam circle around each nearby player.
+                    double along=level.random.nextDouble()*20-10;
+                    double across=level.random.nextDouble()*5-2.5;
+                    int x=(int)Math.floor(center.x+dx*(radius+across)-dz*along);
+                    int z=(int)Math.floor(center.z+dz*(radius+across)+dx*along);
                     BlockPos crest=new BlockPos(x,level.getSeaLevel()+1,z);
                     if(!level.hasChunkAt(crest) || !level.getFluidState(crest.below()).is(net.minecraft.tags.FluidTags.WATER))continue;
                     level.sendParticles(ModParticleTypes.FOAM.get(),x+.5,level.getSeaLevel()+.8,z+.5,7,2,.5,2,.15);
