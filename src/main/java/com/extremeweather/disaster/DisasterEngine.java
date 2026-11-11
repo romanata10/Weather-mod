@@ -145,7 +145,19 @@ public final class DisasterEngine {
             if(!level.hasChunkAt(player.blockPosition()))continue;
             var storms=NearbyStorms.get(level).stormsNearPlayer(player,512);
             double distance=Double.POSITIVE_INFINITY;
-            for(var storm:storms)distance=Math.min(distance,Math.hypot(storm.position.x-player.getX(),storm.position.z-player.getZ()));
+            boolean thundercloud=false;
+            for(var storm:storms) {
+                if(storm.dead || storm.position==null)continue;
+                double horizontal=Math.hypot(storm.position.x-player.getX(),storm.position.z-player.getZ());
+                distance=Math.min(distance,horizontal);
+                if(horizontal<180 && (storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
+                    || storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)))thundercloud=true;
+                // A naturally spawned PMWeather squall owns its own cloud. Add
+                // gust physics to THAT storm, not another command-made cloud.
+                if(storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)
+                    && squalls.size()<3 && squalls.stream().noneMatch(field->field.storm==storm))
+                    squalls.add(new SquallField(storm));
+            }
             boolean stormy=distance<180;
             Vec3 wind=WindEngine.getWind(player.blockPosition(),level);
             double windSpeed=wind.horizontalDistance();
@@ -153,7 +165,7 @@ public final class DisasterEngine {
                 if(level.random.nextInt(7)==0)hail(level,player);
                 if(level.random.nextInt(60)==0)specialLightning(level,player);
                 if(windSpeed>.45 && level.random.nextInt(20)==0)gust(level,player,wind);
-                if(level.random.nextInt(45)==0)tryWhirl(level,player,true);
+                if(thundercloud && level.random.nextInt(45)==0)tryWhirl(level,player,true);
             } else if(level.random.nextInt(75)==0)tryWhirl(level,player,false);
             if(stormy && level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN)) {
                 seaEffects(level,player,wind,windSpeed);
@@ -306,6 +318,9 @@ public final class DisasterEngine {
                 double x=calm?Math.cos(storm.tickCount*.08):wind.x/length;
                 double z=calm?Math.sin(storm.tickCount*.08):wind.z/length;
                 Vec3 next=entity.getDeltaMovement().add(x*.24,.018,z*.24);
+                // Overlapping natural squalls must not accelerate mobs forever.
+                double horizontal=next.horizontalDistance();
+                if(horizontal>1.2)next=new Vec3(next.x*1.2/horizontal,next.y,next.z*1.2/horizontal);
                 entity.setDeltaMovement(next);
                 entity.hurtMarked=true;pushes++;
                 if(age%4==0 && level.canSeeSky(at) && level.random.nextInt(5)==0)
@@ -411,6 +426,15 @@ public final class DisasterEngine {
         BlockPos pos=player.blockPosition().offset(level.random.nextInt(100)-50,0,level.random.nextInt(100)-50);
         if(!level.hasChunkAt(pos))return;
         pos=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,pos);
+        if(stormy) {
+            BlockPos origin=pos;
+            boolean cloud=NearbyStorms.get(level).stormsNearBlock(origin,512).stream()
+                .anyMatch(s->!s.dead && s.position!=null &&
+                    (s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
+                     || s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)) &&
+                    Math.hypot(s.position.x-origin.getX(),s.position.z-origin.getZ())<150);
+            if(!cloud)return; // waterspouts and landspouts originate under a thundercloud
+        }
         Holder<Biome> biome=level.getBiome(pos);
         double temp=biome.value().getBaseTemperature();
         Kind kind;
