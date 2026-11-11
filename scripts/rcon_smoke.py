@@ -250,14 +250,15 @@ with connection as conn:
     # A real submerged mob, not just a successful command response: verify the
     # server applied inward/rotational water-only impulses.
     print("submerged cod:",send(conn,110,2,"summon minecraft:cod 5 63 0"),flush=True)
-    time.sleep(2)
-    whirl_status=send(conn,111,2,"ew status")
-    print("whirlpool physical status:",whirl_status,flush=True)
-    water_below=send(conn,172,2,"execute if block 2 63 0 minecraft:water")
-    print("whirlpool center water after mob movement:",water_below,flush=True)
-    pull=re.search(r"whirlpool pulls: (\d+)",whirl_status)
-    if not pull or int(pull.group(1))<1:
+    for attempt in range(12):
+        time.sleep(.5)
+        whirl_status=send(conn,111+attempt,2,"ew status")
+        pull=re.search(r"whirlpool pulls: (\d+)",whirl_status)
+        if pull and int(pull.group(1))>=1:break
+    else:
+        water_below=send(conn,172,2,"execute if block 2 63 0 minecraft:water")
         raise AssertionError("Whirlpool did not apply a submerged-entity pull; center water="+water_below+": "+whirl_status)
+    print("whirlpool physical status:",whirl_status,flush=True)
     send(conn,112,2,"kill @e[type=minecraft:cod]")
     print("drain whirlpool center:",send(conn,113,2,"fill 0 63 -6 8 63 6 minecraft:air"),flush=True)
     time.sleep(.6)
