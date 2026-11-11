@@ -31,10 +31,10 @@ def command(sock, request_id, kind, text):
 
 
 shape = sys.argv[2] if len(sys.argv) > 2 else 'wedge'
-if shape not in ('wedge', 'rope'):
-    raise ValueError('Only wedge and rope diagnostic presets are supported')
-ef = 4 if shape == 'wedge' else 1
-distance = 90 if shape == 'wedge' else 45
+if shape not in ('wedge', 'rope', 'multi_vortex'):
+    raise ValueError('Only wedge, rope and multi_vortex diagnostic presets are supported')
+ef = 1 if shape == 'rope' else 4
+distance = {'wedge': 90, 'rope': 45, 'multi_vortex': 75}[shape]
 
 with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
     sock.settimeout(12)
@@ -64,7 +64,11 @@ with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
     # storm has not had time to advance. Capture after server/client ticks.
     time.sleep(10)
     status = command(sock, 8, 2, 'ew status')
-    print('native wedge state:', status, flush=True)
+    print(f'native {shape} state:', status, flush=True)
+    if shape == 'multi_vortex':
+        satellites = re.search(r'native sub-vortices: (\d+)', status)
+        if not satellites or int(satellites.group(1)) < 4:
+            raise AssertionError('Four native PMWeather satellites did not survive: ' + status)
     count = re.search(r'PMWeather storms nearby: (\d+)', status)
     # PMWeather may naturally spawn another storm during the ten-second wait;
     # the command itself adds only one. Do not mistake ambient weather for a

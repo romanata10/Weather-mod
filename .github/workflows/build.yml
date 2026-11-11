@@ -216,6 +216,13 @@ jobs:
               fi
               sleep .2
             done
+            for attempt in $(seq 1 100); do
+              if [ -f native-multi-now ]; then
+                python3 scripts/capture_client.py native-multi-screen.png > native-multi-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
             for attempt in $(seq 1 30); do
               if [ -f cyclone-now ]; then
                 python3 scripts/capture_client.py cyclone-screen.png > cyclone-capture.log 2>&1 || true
@@ -301,6 +308,21 @@ jobs:
           else
             echo '::warning::Native PMWeather rope staging failed'
             while IFS= read -r line; do echo "::warning::Rope probe: $line"; done < <(tail -5 native-rope-probe.log)
+          fi
+          if python3 scripts/rcon_native_vortex_probe.py "$RCON_PASSWORD" multi_vortex > native-multi-probe.log 2>&1; then
+            touch native-multi-now
+            for attempt in $(seq 1 60); do
+              if [ -f native-multi-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f native-multi-screen.png ]; then
+              echo '::notice::Native four-satellite PMWeather funnel framebuffer captured; actual satellite visibility requires review.'
+            else
+              echo '::warning::Native multi-vortex framebuffer unavailable'
+            fi
+          else
+            echo '::warning::Native multi-vortex staging failed'
+            while IFS= read -r line; do echo "::warning::Multi-vortex probe: $line"; done < <(tail -5 native-multi-probe.log)
           fi
           python3 scripts/rcon_cyclone_probe.py "$RCON_PASSWORD" > cyclone-probe.log 2>&1 || {
             echo '::warning::Native cyclone client probe failed'
@@ -431,6 +453,13 @@ jobs:
           if [ -f native-rope-screen.png ]; then
             python3 scripts/annotate_client_screen.py native-rope-screen.png || echo '::warning::Native rope thumbnail unavailable'
           fi
+      - name: Show native PMWeather multi-vortex preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f native-multi-screen.png ]; then
+            python3 scripts/annotate_client_screen.py native-multi-screen.png || echo '::warning::Native multi-vortex thumbnail unavailable'
+          fi
       - name: Show native cyclone client preview in separate check annotations
         if: always()
         shell: bash
@@ -461,6 +490,7 @@ jobs:
             client-baseline.png
             native-vortex-screen.png
             native-rope-screen.png
+            native-multi-screen.png
             cyclone-screen.png
             sprite-screen.png
             whirlpool-screen.png
