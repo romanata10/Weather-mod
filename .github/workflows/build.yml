@@ -316,6 +316,12 @@ jobs:
             done
             if [ -f native-rope-screen.png ]; then
               echo '::notice::Native PMWeather rope framebuffer captured for visual comparison with wedge; shapes require manual review.'
+              grep -F 'ExtremeWeather client native funnel geometry:' client-smoke.log | tail -4 | while IFS= read -r line; do
+                echo "::notice::Joined client native geometry: $line"
+              done
+              if [ "$(grep -Fc 'ExtremeWeather client native funnel geometry:' client-smoke.log)" -lt 2 ]; then
+                echo '::warning::Joined client did not report both narrow and wide native storm parameters.'
+              fi
             else
               echo '::warning::Native PMWeather rope framebuffer unavailable'
             fi
