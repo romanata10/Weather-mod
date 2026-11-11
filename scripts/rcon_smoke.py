@@ -96,6 +96,18 @@ with connection as conn:
     later_width=re.search(r"widest native supercell width: (\d+)",later)
     if not later_width or int(later_width.group(1))<15:
         raise AssertionError("Native funnel width collapsed after server ticks: "+later)
+    later_wind=re.search(r"strongest native supercell wind: (\d+)",later)
+    if not later_wind or int(later_wind.group(1))<1:
+        raise AssertionError("Native funnel lost its PMWeather wind after server ticks: "+later)
+    # The first regression appeared only after roughly ten seconds. Keep
+    # this in the required server test, not only the optional client probe.
+    time.sleep(8.5)
+    sustained=send(conn,131,2,"execute in minecraft:overworld positioned 0 100 0 run ew status")
+    print("native vortex after ten seconds:",sustained,flush=True)
+    sustained_width=re.search(r"widest native supercell width: (\d+)",sustained)
+    sustained_wind=re.search(r"strongest native supercell wind: (\d+)",sustained)
+    if not sustained_width or int(sustained_width.group(1))<20 or not sustained_wind or int(sustained_wind.group(1))<1:
+        raise AssertionError("Native tornado geometry/wind did not persist: "+sustained)
     check(27, "execute in minecraft:overworld positioned 0 100 0 run ew status", "PMWeather storms nearby:")
     check(28, "ew clear all", "PMWeather storms and addon weather cleared")
     # Verify the functional storm siren switches its BLOCKSTATE from PMWeather
