@@ -40,9 +40,17 @@ public final class DisasterEngine {
     // Only explicitly requested native PM funnels: PMWeather may reset width
     // to its default 10 on later ticks. Keep the SAME storm, never a duplicate.
     private final Map<dev.protomanly.pmweather.weather.Storm,NativeFunnel> nativeFunnels=new IdentityHashMap<>();
-    private record NativeFunnel(float width,float shape,int maxWidth,int windspeed,long expires) {}
-    public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm) {
-        nativeFunnels.put(storm,new NativeFunnel(storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks+1200));
+    private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long expires) {}
+    public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm,com.extremeweather.vortex.FunnelShape requested) {
+        nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks+1200));
+    }
+    /** This is the requested preset, NOT proof of the client's rendered outline. */
+    public Optional<com.extremeweather.vortex.FunnelShape> requestedNativeShapeNear(Vec3 pos,double range) {
+        return nativeFunnels.entrySet().stream()
+            .filter(entry->!entry.getKey().dead && ticks<entry.getValue().expires()
+                && entry.getKey().position!=null && entry.getKey().position.distanceToSqr(pos)<=range*range)
+            .min(Comparator.comparingDouble(entry->entry.getKey().position.distanceToSqr(pos)))
+            .map(entry->entry.getValue().requested());
     }
     private void maintainNativeFunnels() {
         for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {

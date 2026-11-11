@@ -149,7 +149,7 @@ public final class EWCommands {
             if(storm==null){
                 context.getSource().sendFailure(Component.literal("PMWeather cannot spawn here (unloaded chunk or storm limit)."));return 0;
             }
-            DisasterEvents.get(level).trackNativeFunnel(storm);
+            DisasterEvents.get(level).trackNativeFunnel(storm,shape);
         } catch(RuntimeException error){context.getSource().sendFailure(Component.literal("PMWeather spawn failed: "+error.getMessage()));return 0;}
         context.getSource().sendSuccess(()->Component.literal("One native PMWeather supercell EF"+ef+
             " (requested "+shape+"; PMWeather controls its actual funnel geometry; no second silhouette)."),true);

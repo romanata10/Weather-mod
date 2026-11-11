@@ -40,9 +40,14 @@ public final class EWBlocks {
         @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
             if (level instanceof ServerLevel server) {
                 var storms = NearbyStorms.get(server).stormsNearBlock(pos, 512);
-                player.displayClientMessage(storms.isEmpty()
-                    ? Component.translatable("message.extremeweather.clear")
-                    : Component.translatable("message.extremeweather.storms", storms.size()), true);
+                var requested = com.extremeweather.disaster.DisasterEvents.get(server)
+                    .requestedNativeShapeNear(pos.getCenter(),512);
+                player.displayClientMessage(requested.isPresent()
+                    ? Component.translatable("message.extremeweather.requested_shape",
+                        requested.get().name().toLowerCase(java.util.Locale.ROOT),storms.size())
+                    : storms.isEmpty()
+                        ? Component.translatable("message.extremeweather.clear")
+                        : Component.translatable("message.extremeweather.storms_unknown_shape",storms.size()), false);
             }
             return InteractionResult.SUCCESS;
         }

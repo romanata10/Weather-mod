@@ -49,5 +49,7 @@
   "block.extremeweather.scorched_earth": "Scorched Earth",
   "block.extremeweather.charred_grass": "Charred Grass",
   "block.extremeweather.ash": "Ash",
-  "message.extremeweather.storms": "%s storms within radar range"
+  "message.extremeweather.storms": "%s storms within radar range",
+  "message.extremeweather.requested_shape": "Requested native tornado preset: %s (%s nearby storms). Actual PMWeather silhouette not verified.",
+  "message.extremeweather.storms_unknown_shape": "%s nearby storms; tornado shape unknown (untracked PMWeather storm)."
 }
