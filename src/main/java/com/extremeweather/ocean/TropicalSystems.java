@@ -111,6 +111,9 @@ public final class TropicalSystems {
         Pulse(Vec3 center){this.center=center;}
         void tick(ServerLevel level) {
             double radius=8+age*2.0;
+            // Nearby players are only search anchors. Their overlapping search
+            // boxes must not apply the same wave impulse several times.
+            Set<UUID> pushed=new HashSet<>();
             for(var player:level.players()) {
                 double distance=Math.hypot(player.getX()-center.x,player.getZ()-center.z);
                 if(Math.abs(distance-radius)>12 || !level.hasChunkAt(player.blockPosition()))continue;
@@ -120,9 +123,13 @@ public final class TropicalSystems {
                 double dx=Math.cos(angle),dz=Math.sin(angle);
                 for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(10))) {
                     if(entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
-                    double entityRadius=Math.hypot(entity.getX()-center.x,entity.getZ()-center.z);
-                    if(Math.abs(entityRadius-radius)>12)continue; // actual moving front
-                    entity.push(dx*.25,.12,dz*.25);entity.hurtMarked=true;
+                    double ex=entity.getX()-center.x,ez=entity.getZ()-center.z;
+                    double entityRadius=Math.hypot(ex,ez);
+                    if(Math.abs(entityRadius-radius)>12 || !pushed.add(entity.getUUID()))continue;
+                    // Push each entity outward from the wave origin, not in the
+                    // direction of whichever player happened to discover it.
+                    double inv=entityRadius<.001?0:1/entityRadius;
+                    entity.push(ex*inv*.25,.12,ez*inv*.25);entity.hurtMarked=true;
                     pushes++;
                 }
                 for(int i=0;i<8;i++) {
