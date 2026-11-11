@@ -317,6 +317,11 @@ jobs:
             done
             if [ -f native-multi-screen.png ]; then
               echo '::notice::Native four-satellite PMWeather funnel framebuffer captured; actual satellite visibility requires review.'
+              if grep -Fq 'ExtremeWeather client native sub-vortices synchronized:' client-smoke.log; then
+                echo '::notice::The joined client received four PMWeather-native satellite vortices.'
+              else
+                echo '::warning::Server has four native satellites, but joined client did not report four synchronized satellites.'
+              fi
             else
               echo '::warning::Native multi-vortex framebuffer unavailable'
             fi
