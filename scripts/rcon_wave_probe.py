@@ -42,6 +42,9 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     floor=command(sock,9,2,at+'fill ~-12 62 ~-12 ~12 62 ~12 minecraft:stone')
     water=command(sock,10,2,at+'fill ~-12 63 ~-12 ~12 63 ~12 minecraft:water')
     print('wave basin:',floor,water,flush=True)
+    # Wait for the joined client's chunk rebuild before judging a screenshot;
+    # RCON block changes otherwise outpace the first visible terrain frame.
+    time.sleep(2)
     cod=command(sock,11,2,at+'summon minecraft:cod ~3 63 ~')
     print('wave cod:',cod,flush=True)
     if 'Summoned' not in cod:raise AssertionError('Could not stage water mob: '+cod)
@@ -54,6 +57,7 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
         match=re.search(r'wave entity pushes: (\d+)',status)
         if match and int(match.group(1))>0:
             print('joined-client wave physical state:',status,flush=True)
+            time.sleep(.4)  # let the foam from a subsequent front tick reach the GPU
             break
     else:
         raise AssertionError('Wave front never pushed a mob in the ocean basin: '+status)

@@ -414,7 +414,7 @@ jobs:
             sleep .2
           done
           test -f wave-screen.png || { echo '::warning::Wave framebuffer missing'; exit 1; }
-          echo '::notice::Ocean wavefront foam captured with a joined client; appearance needs manual review.'
+          echo '::notice::Joined-client wavefront frame captured after a measured mob impulse; visible foam/front requires manual review.'
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash

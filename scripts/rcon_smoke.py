@@ -216,11 +216,20 @@ with connection as conn:
     # This test world is land, so native width and addon strength should both
     # decline after several 40-tick synchronization intervals.
     time.sleep(5)
-    landfall=send(conn,104,2,"execute positioned 0 100 0 run ew status")
+    # PMWeather can reassign its own width between our addon tick and an RCON
+    # query. Sample over several server ticks; require an actual narrow state,
+    # not merely a declining addon power counter.
+    narrowed=False
+    for _ in range(20):
+        landfall=send(conn,104,2,"execute positioned 0 100 0 run ew status")
+        reduced=re.search(r"widest native cyclone width: (\d+)",landfall)
+        if reduced and int(reduced.group(1))<int(width.group(1)):
+            narrowed=True
+            break
+        time.sleep(.25)
     print("native cyclone landfall state:",landfall,flush=True)
-    reduced=re.search(r"widest native cyclone width: (\d+)",landfall)
-    if not reduced or int(reduced.group(1))>=int(width.group(1)):
-        raise AssertionError("Native cyclone cloud did not narrow on landfall: "+landfall)
+    if not narrowed:
+        raise AssertionError("Native cyclone cloud never narrowed during sampled landfall ticks: "+landfall)
     check(33, "ew clear all", "PMWeather storms and addon weather cleared")
     print("prepare water:",send(conn,34,2,"setblock 2 63 0 minecraft:water"),flush=True)
     check(55, "execute if block 2 63 0 minecraft:water", "passed")
