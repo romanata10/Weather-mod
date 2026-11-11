@@ -55,8 +55,13 @@ public final class PMStormBridge {
         // Use PMWeather's own satellite-vortex physics and renderer, not a second
         // particle funnel. Constructor parameters: max wind multiplier, relative
         // width, distance from storm axis and life in ticks (verified against JAR).
+        // The former 0.68-axis orbit overlapped the main funnel in the joined
+        // multi-vortex frame. Give the four requested native satellites room
+        // outside the parent's outer wall; no addon funnel is drawn here.
+        float orbit=outline==FunnelShape.MULTI_VORTEX?1.12f:.68f;
+        float satelliteWidth=outline==FunnelShape.MULTI_VORTEX?.30f:.24f;
         if(storm.vorticies!=null)for(int i=0;i<outline.satellites();i++)
-            storm.vorticies.add(new Vorticy(storm,.35f,.24f,.68f,900+rating*120));
+            storm.vorticies.add(new Vorticy(storm,.45f,satelliteWidth,orbit,900+rating*120));
         if(storm.weatherHandler instanceof WeatherHandlerServer handler)handler.syncStormUpdate(storm);
         return storm;
     }
