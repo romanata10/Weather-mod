@@ -77,7 +77,7 @@ jobs:
           RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > eula.txt
           printf 'eula=true\n' > runserver/eula.txt
-          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\n' "$RCON_PASSWORD" > runserver/server.properties
+          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\npause-when-empty-seconds=-1\n' "$RCON_PASSWORD" > runserver/server.properties
           tail -f /dev/null | timeout 180s gradle runServer --no-daemon > runserver-smoke.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
@@ -114,7 +114,7 @@ jobs:
         shell: bash
         run: |
           RCON_PASSWORD=$(openssl rand -hex 16)
-          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\n' "$RCON_PASSWORD" > runserver/server.properties
+          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\npause-when-empty-seconds=-1\n' "$RCON_PASSWORD" > runserver/server.properties
           ready_server() {
             local logfile="$1" pid="$2"
             for attempt in $(seq 1 150); do
@@ -168,7 +168,7 @@ jobs:
           mkdir -p runserver-visual
           RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > runserver-visual/eula.txt
-          printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\nallow-flight=true\nlevel-type=minecraft:flat\nview-distance=18\n' "$RCON_PASSWORD" > runserver-visual/server.properties
+          printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\npause-when-empty-seconds=-1\nallow-flight=true\nlevel-type=minecraft:flat\nview-distance=18\n' "$RCON_PASSWORD" > runserver-visual/server.properties
           timeout 300s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" "${CLIENT_PID:-}" 2>/dev/null || true' EXIT

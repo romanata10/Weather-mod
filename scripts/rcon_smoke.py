@@ -55,6 +55,28 @@ with connection as conn:
     check(9, "forceload add 0 0", "force")
     check(10, "weather clear 100000", "clear")
     send(conn, 100, 2, "gamerule doWeatherCycle false")
+    # A solid shallow basin around a single water anchor forces the temporary
+    # crest to spread laterally as vanilla flowing water. Check its recession.
+    # This does not cover arbitrary shore geometry or crash recovery.
+    check(173,"forceload add 4100 8","force")
+    print("flood test basin floor:",send(conn,174,2,"fill 4097 63 5 4103 63 11 minecraft:stone"),flush=True)
+    check(181,"setblock 4100 63 8 minecraft:water","block")
+    send(conn,175,2,"fill 4097 64 5 4103 64 11 minecraft:air")
+    check(176,"ew disaster flood 4100 64 8","Started flood")
+    # Force a vanilla neighbor update beside the temporary source; a remote
+    # force-loaded chunk with no players need not otherwise tick fluid soon.
+    send(conn,182,2,"setblock 4101 64 8 minecraft:stone")
+    send(conn,183,2,"setblock 4101 64 8 minecraft:air")
+    flowed=False
+    for _ in range(12):
+        time.sleep(.5)
+        reply=send(conn,177,2,"execute if block 4101 64 8 minecraft:water")
+        if 'passed' in reply.lower():flowed=True;break
+    if not flowed:raise AssertionError("Temporary source did not spread in test basin; cannot validate rollback")
+    check(178,"ew clear all","PMWeather storms and addon weather cleared")
+    time.sleep(4)
+    check(179,"execute if block 4100 64 8 minecraft:air","passed")
+    check(180,"execute if block 4101 64 8 minecraft:air","passed")
     print("prepare wildfire fuel:",send(conn,11,2,"setblock 0 70 0 minecraft:grass_block"),flush=True)
     check(54, "execute if block 0 70 0 minecraft:grass_block", "passed")
     send(conn, 12, 2, "setblock 0 71 0 minecraft:air")  # air may already exist
@@ -262,28 +284,6 @@ with connection as conn:
     check(167,"forceload add 4008 8","force")
     time.sleep(1.5)
     check(168,"execute if block 4008 64 8 minecraft:air","passed")
-    # A solid shallow basin around a single water anchor forces the temporary
-    # crest to spread laterally as vanilla flowing water. Check its recession.
-    # This does not cover arbitrary shore geometry or crash recovery.
-    check(173,"forceload add 4100 8","force")
-    print("flood test basin floor:",send(conn,174,2,"fill 4097 63 5 4103 63 11 minecraft:stone"),flush=True)
-    check(181,"setblock 4100 63 8 minecraft:water","block")
-    send(conn,175,2,"fill 4097 64 5 4103 64 11 minecraft:air")
-    check(176,"ew disaster flood 4100 64 8","Started flood")
-    # Force a vanilla neighbor update beside the temporary source; a remote
-    # force-loaded chunk with no players need not otherwise tick fluid soon.
-    send(conn,182,2,"setblock 4101 64 8 minecraft:stone")
-    send(conn,183,2,"setblock 4101 64 8 minecraft:air")
-    flowed=False
-    for _ in range(12):
-        time.sleep(.5)
-        reply=send(conn,177,2,"execute if block 4101 64 8 minecraft:water")
-        if 'passed' in reply.lower():flowed=True;break
-    if not flowed:raise AssertionError("Temporary source did not spread in test basin; cannot validate rollback")
-    check(178,"ew clear all","PMWeather storms and addon weather cleared")
-    time.sleep(4)
-    check(179,"execute if block 4100 64 8 minecraft:air","passed")
-    check(180,"execute if block 4101 64 8 minecraft:air","passed")
     # The current "tsunami" is a bounded ocean-only entity/foam pulse, not
     # a fluid wall. Prove its cap and immediate /ew clear reset explicitly.
     print("stage ocean for pulse:",send(conn,184,2,"fillbiome 4004 60 4 4012 80 12 minecraft:ocean"),flush=True)
