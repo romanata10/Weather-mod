@@ -38,6 +38,19 @@ public enum FunnelShape {
         };
         return Math.max(.5,width*curve);
     }
+    /** Approximate native PMWeather width from the requested near-ground profile.
+     * The native renderer has no per-height profile API; this cannot recreate
+     * the complete 23-shape outline used by the separate addon preview. */
+    public float nativeWidthScale() {
+        return (float)Math.max(.4,Math.min(2.6,radius(0,100,0)/100));
+    }
+    /** PMWeather exposes a continuous tornadoShape value, not an enum.
+     * Map ground/cloud width ratio to that bounded native control rather than
+     * assigning unrelated values based on enum declaration order. */
+    public float nativeTaper() {
+        double ratio=radius(0,100,0)/radius(1,100,0);
+        return (float)(6+10*Math.max(0,Math.min(1,(ratio-.2)/1.6)));
+    }
     public int satellites() {
         return switch(this) {
             case MULTI_VORTEX -> 4;

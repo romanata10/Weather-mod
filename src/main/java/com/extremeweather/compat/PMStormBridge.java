@@ -37,10 +37,7 @@ public final class PMStormBridge {
         int rating=Math.max(0,Math.min(5,ef));
         if(!level.hasChunkAt(BlockPos.containing(location)) ||
             NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(location),256).size()>=5)return null;
-        float width=16+rating*10f;
-        if(outline==FunnelShape.WEDGE || outline==FunnelShape.BOWL_SHAPED)width*=1.7f;
-        if(outline==FunnelShape.EL_RENO)width*=2.6f;
-        if(outline==FunnelShape.WIRE || outline==FunnelShape.ROPE || outline==FunnelShape.NEEDLE)width*=.48f;
+        float width=(16+rating*10f)*outline.nativeWidthScale();
         int windspeed=65+rating*30;
         // StormBuilder defaults energy AND windspeed/maxWindspeed to zero. A
         // high stage/width alone therefore makes a broad cloud but does not
@@ -51,7 +48,7 @@ public final class PMStormBridge {
             .energy(500).windspeed(windspeed).maxWindspeed(windspeed)
             .width(width).smoothWidth(width).maxWidth(Math.max(16,Math.round(width)))
             .buildAndSpawn();
-        storm.tornadoShape=6f+outline.ordinal()*10f/(FunnelShape.values().length-1);
+        storm.tornadoShape=outline.nativeTaper();
         // Use PMWeather's own satellite-vortex physics and renderer, not a second
         // particle funnel. Constructor parameters: max wind multiplier, relative
         // width, distance from storm axis and life in ticks (verified against JAR).
