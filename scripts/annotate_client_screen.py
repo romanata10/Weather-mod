@@ -10,6 +10,7 @@ prefix=('ClientBaseline' if path.name=='client-baseline.png' else
         'NativeVortexScreen' if path.name=='native-vortex-screen.png' else
         'NativeRopeScreen' if path.name=='native-rope-screen.png' else
         'NativeMultiScreen' if path.name=='native-multi-screen.png' else
+        'NativeMultiTopScreen' if path.name=='native-multi-top-screen.png' else
         'CycloneScreen' if path.name=='cyclone-screen.png' else
         'SpriteScreen' if path.name=='sprite-screen.png' else
         'WhirlpoolScreen' if path.name=='whirlpool-screen.png' else 'ClientScreen')
