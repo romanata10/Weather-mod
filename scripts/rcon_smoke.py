@@ -222,9 +222,11 @@ with connection as conn:
     time.sleep(2)
     whirl_status=send(conn,111,2,"ew status")
     print("whirlpool physical status:",whirl_status,flush=True)
+    water_below=send(conn,172,2,"execute if block 2 63 0 minecraft:water")
+    print("whirlpool center water after mob movement:",water_below,flush=True)
     pull=re.search(r"whirlpool pulls: (\d+)",whirl_status)
     if not pull or int(pull.group(1))<1:
-        raise AssertionError("Whirlpool did not apply a submerged-entity pull: "+whirl_status)
+        raise AssertionError("Whirlpool did not apply a submerged-entity pull; center water="+water_below+": "+whirl_status)
     send(conn,112,2,"kill @e[type=minecraft:cod]")
     print("drain whirlpool center:",send(conn,113,2,"fill 0 63 -6 8 63 6 minecraft:air"),flush=True)
     time.sleep(.6)
