@@ -74,6 +74,8 @@ public final class EWCommands {
                 long nativeCyclones=nativeStorms.stream().filter(storm->storm.is(StormTypes.CYCLONE)).count();
                 int widestSupercell=nativeStorms.stream().filter(storm->storm.is(StormTypes.SUPERCELL))
                     .mapToInt(storm->Math.round(storm.width)).max().orElse(0);
+                int strongestSupercellWind=nativeStorms.stream().filter(storm->storm.is(StormTypes.SUPERCELL))
+                    .mapToInt(storm->storm.windspeed).max().orElse(0);
                 int fires=FireEvents.active(level);
                 int squalls=DisasterEvents.get(level).activeSqualls();
                 int smallVortices=DisasterEvents.get(level).activeSmallVortices();
@@ -86,6 +88,7 @@ public final class EWCommands {
                 int cycloneWidth=DisasterEvents.get(level).widestNativeCycloneWidth();
                 c.getSource().sendSuccess(()->Component.literal("PMWeather storms nearby: "+count+
                     "; native sub-vortices: "+satellites+"; widest native supercell width: "+widestSupercell+
+                    "; strongest native supercell wind: "+strongestSupercellWind+
                     "; active squall gusts: "+squalls+
                     "; active small vortices: "+smallVortices+"; active sprites: "+sprites+
                     "; active whirlpools: "+whirlpools+"; whirlpool pulls: "+whirlpoolPulls+"; squall pushes: "+pushes+

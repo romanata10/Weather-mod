@@ -35,16 +35,22 @@ public final class PMStormBridge {
      */
     public static Storm nativeFunnel(ServerLevel level,Vec3 location,FunnelShape outline,int ef) {
         int rating=Math.max(0,Math.min(5,ef));
-        Storm storm=spawn(level,StormTypes.SUPERCELL,location,Math.min(1f,.5f+rating*.1f),Math.max(2,rating));
-        if(storm==null)return null;
+        if(!level.hasChunkAt(BlockPos.containing(location)) ||
+            NearbyStorms.get(level).stormsNearBlock(BlockPos.containing(location),256).size()>=5)return null;
         float width=16+rating*10f;
         if(outline==FunnelShape.WEDGE || outline==FunnelShape.BOWL_SHAPED)width*=1.7f;
         if(outline==FunnelShape.EL_RENO)width*=2.6f;
         if(outline==FunnelShape.WIRE || outline==FunnelShape.ROPE || outline==FunnelShape.NEEDLE)width*=.48f;
-        storm.width=width;
-        storm.smoothWidth=width;
-        storm.maxWidth=Math.max(16,Math.round(width));
-        storm.maxWindspeed=65+rating*30;
+        int windspeed=65+rating*30;
+        // StormBuilder defaults energy AND windspeed/maxWindspeed to zero. A
+        // high stage/width alone therefore makes a broad cloud but does not
+        // seed an actual tornadic wind field. Initialize PM's native dynamics
+        // before syncStormNew instead of trying to add a second addon funnel.
+        Storm storm=new StormBuilder(level,StormTypes.SUPERCELL,location)
+            .risk(Math.min(1f,.5f+rating*.1f)).stage(Math.max(2,rating)).maxStage(5)
+            .energy(500).windspeed(windspeed).maxWindspeed(windspeed)
+            .width(width).smoothWidth(width).maxWidth(Math.max(16,Math.round(width)))
+            .buildAndSpawn();
         storm.tornadoShape=6f+outline.ordinal()*10f/(FunnelShape.values().length-1);
         // Use PMWeather's own satellite-vortex physics and renderer, not a second
         // particle funnel. Constructor parameters: max wind multiplier, relative

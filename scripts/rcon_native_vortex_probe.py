@@ -60,5 +60,8 @@ with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
     if 'PMWeather storms nearby: 1' not in status:
         raise AssertionError('Expected one native PMWeather storm: ' + status)
     width = re.search(r'widest native supercell width: (\d+)', status)
+    wind = re.search(r'strongest native supercell wind: (\d+)', status)
     if not width or int(width.group(1)) < 20:
         raise AssertionError('Native PMWeather supercell lost its funnel width: ' + status)
+    if not wind or int(wind.group(1)) < 1:
+        raise AssertionError('Native PMWeather storm has no tornadic wind: ' + status)
