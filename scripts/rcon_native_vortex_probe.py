@@ -65,8 +65,12 @@ with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
     time.sleep(10)
     status = command(sock, 8, 2, 'ew status')
     print('native wedge state:', status, flush=True)
-    if 'PMWeather storms nearby: 1' not in status:
-        raise AssertionError('Expected one native PMWeather storm: ' + status)
+    count = re.search(r'PMWeather storms nearby: (\d+)', status)
+    # PMWeather may naturally spawn another storm during the ten-second wait;
+    # the command itself adds only one. Do not mistake ambient weather for a
+    # second funnel created by the addon.
+    if not count or int(count.group(1)) < 1:
+        raise AssertionError('Native PMWeather storm disappeared: ' + status)
     width = re.search(r'widest native supercell width: (\d+)', status)
     wind = re.search(r'strongest native supercell wind: (\d+)', status)
     if not width or int(width.group(1)) < (20 if shape == 'wedge' else 8):
