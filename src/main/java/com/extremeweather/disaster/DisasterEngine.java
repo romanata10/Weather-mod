@@ -40,9 +40,9 @@ public final class DisasterEngine {
     // Explicit funnels retain their command geometry; naturally adopted
     // PMWeather funnels only receive an outline parameter, never extra wind.
     private final Map<dev.protomanly.pmweather.weather.Storm,NativeFunnel> nativeFunnels=new IdentityHashMap<>();
-    private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long expires,boolean natural) {}
+    private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long born,long expires,boolean natural) {}
     public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm,com.extremeweather.vortex.FunnelShape requested) {
-        nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks+1200,false));
+        nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks,ticks+1200,false));
     }
     private void adoptNaturalFunnels(ServerLevel level) {
         if(nativeFunnels.size()>=16)return;
@@ -53,9 +53,11 @@ public final class DisasterEngine {
             if(storm.dead || !storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
                 || storm.stage<3 || storm.windspeed<65 || nativeFunnels.containsKey(storm))continue;
             var shape=com.extremeweather.vortex.FunnelShape.natural(storm.ID);
-            storm.tornadoShape=shape.nativeTaper();
-            nativeFunnels.put(storm,new NativeFunnel(shape,storm.width,storm.tornadoShape,
-                storm.maxWidth,storm.windspeed,ticks+1200,true));
+            // Start with a slender native profile; the chosen shape is the
+            // mature target, reached gradually as PMWeather's wind strengthens.
+            storm.tornadoShape=com.extremeweather.vortex.FunnelShape.ROPE.nativeTaper();
+            nativeFunnels.put(storm,new NativeFunnel(shape,storm.width,shape.nativeTaper(),
+                storm.maxWidth,storm.windspeed,ticks,ticks+1200,true));
             if(storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
                 handler.syncStormUpdate(storm);
         }
@@ -75,7 +77,13 @@ public final class DisasterEngine {
                 (preset.natural() && (storm.stage<3 || storm.windspeed<65))) {it.remove();continue;}
             if(preset.natural()) {
                 // PMWeather owns natural growth, weakening and cloud width.
-                if(storm.tornadoShape!=preset.shape())storm.tornadoShape=preset.shape();
+                // A young or weakening funnel tends toward a rope; only the
+                // continuous native shape control changes, not the storm wind.
+                float maturity=(float)Math.min(1,Math.min((ticks-preset.born())/80.0,
+                    Math.max(0,(storm.windspeed-65)/35.0)));
+                float rope=com.extremeweather.vortex.FunnelShape.ROPE.nativeTaper();
+                float target=rope+(preset.shape()-rope)*maturity;
+                if(Math.abs(storm.tornadoShape-target)>.01f)storm.tornadoShape=target;
                 if(ticks%20==0 && storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
                     handler.syncStormUpdate(storm);
                 continue;
