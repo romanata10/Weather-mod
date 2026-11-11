@@ -110,6 +110,46 @@ jobs:
             exit 1
           }
           cat rcon-smoke.log
+      - name: Persist temporary flood source through a clean dedicated-server restart
+        shell: bash
+        run: |
+          RCON_PASSWORD=$(openssl rand -hex 16)
+          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\n' "$RCON_PASSWORD" > runserver/server.properties
+          ready_server() {
+            local logfile="$1" pid="$2"
+            for attempt in $(seq 1 150); do
+              if grep -Eq 'Done \([0-9.]+s\)!' "$logfile"; then return 0; fi
+              if ! kill -0 "$pid" 2>/dev/null; then break; fi
+              sleep 1
+            done
+            tail -70 "$logfile"
+            return 1
+          }
+          tail -f /dev/null | timeout 180s gradle runServer --no-daemon > surge-before.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          ready_server surge-before.log "$SERVER_PID"
+          python3 scripts/rcon_surge_restart.py stage "$RCON_PASSWORD" > surge-stage.log 2>&1 || {
+            cat surge-stage.log; tail -45 surge-before.log; exit 1;
+          }
+          cat surge-stage.log
+          for attempt in $(seq 1 45); do
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo '::error::Server did not stop cleanly after save-all flush'
+            exit 1
+          fi
+          wait "$SERVER_PID" || true
+          tail -f /dev/null | timeout 180s gradle runServer --no-daemon > surge-after.log 2>&1 &
+          SERVER_PID=$!
+          ready_server surge-after.log "$SERVER_PID"
+          python3 scripts/rcon_surge_restart.py verify "$RCON_PASSWORD" > surge-verify.log 2>&1 || {
+            cat surge-verify.log; tail -45 surge-after.log; exit 1;
+          }
+          cat surge-verify.log
+          echo '::notice::Temporary flood source survived a clean restart and was removed after /ew clear all; downstream flow remains unverified.'
       - name: Optional in-world raymarch client probe (must connect to count)
         if: always()
         continue-on-error: true
