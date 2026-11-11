@@ -122,7 +122,11 @@ jobs:
               if ! kill -0 "$pid" 2>/dev/null; then break; fi
               sleep 1
             done
-            tail -70 "$logfile"
+            echo "::error::Restart probe server did not become ready: $logfile"
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::error::$line"
+            done < <(tail -25 "$logfile")
             return 1
           }
           tail -f /dev/null | timeout 180s gradle runServer --no-daemon > surge-before.log 2>&1 &
@@ -130,7 +134,8 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           ready_server surge-before.log "$SERVER_PID"
           python3 scripts/rcon_surge_restart.py stage "$RCON_PASSWORD" > surge-stage.log 2>&1 || {
-            cat surge-stage.log; tail -45 surge-before.log; exit 1;
+            while IFS= read -r line; do echo "::error::Surge stage: $line"; done < surge-stage.log
+            tail -45 surge-before.log; exit 1;
           }
           cat surge-stage.log
           for attempt in $(seq 1 45); do
@@ -146,7 +151,8 @@ jobs:
           SERVER_PID=$!
           ready_server surge-after.log "$SERVER_PID"
           python3 scripts/rcon_surge_restart.py verify "$RCON_PASSWORD" > surge-verify.log 2>&1 || {
-            cat surge-verify.log; tail -45 surge-after.log; exit 1;
+            while IFS= read -r line; do echo "::error::Surge verify: $line"; done < surge-verify.log
+            tail -45 surge-after.log; exit 1;
           }
           cat surge-verify.log
           echo '::notice::Temporary flood source survived a clean restart and was removed after /ew clear all; downstream flow remains unverified.'
