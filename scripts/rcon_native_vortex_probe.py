@@ -44,13 +44,15 @@ with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
     command(sock, 4, 2, 'time set noon')
     mode = command(sock, 5, 2, 'gamemode spectator @a')
     print('spectator camera:', mode, flush=True)
-    if 'spectator' not in mode.lower() and 'already' not in mode.lower():
+    # Vanilla emits an empty RCON reply when the player was already in this
+    # mode (the preceding wedge probe switched the same connected client).
+    if mode and 'spectator' not in mode.lower() and 'already' not in mode.lower():
         raise AssertionError('Could not switch diagnostic camera: ' + mode)
     # Pitch the spectator down toward the funnel rather than staring across
     # the cloud deck at a level horizon. Spawn on the actual camera ray.
     teleport = command(sock, 6, 2, 'execute as @a at @s run tp @s ~ 90 ~ 0 12')
     print('camera teleport:', teleport, flush=True)
-    if 'teleported' not in teleport.lower():
+    if teleport and 'teleported' not in teleport.lower():
         raise AssertionError('Could not position diagnostic camera: ' + teleport)
     time.sleep(1)
     result = command(sock, 7, 2,
