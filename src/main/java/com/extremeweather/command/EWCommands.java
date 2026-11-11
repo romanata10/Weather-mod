@@ -98,7 +98,9 @@ public final class EWCommands {
                     "; active cyclone systems: "+cyclones+"; active wave pulses: "+wavePulses+
                     "; wave entity pushes: "+wavePushes+
                     "; weakest cyclone power: "+String.format(java.util.Locale.ROOT,"%.2f",cyclonePower)+
-                    "; widest native cyclone width: "+cycloneWidth),false);
+                    "; widest native cyclone width: "+cycloneWidth+
+                    "; tracked native funnel geometry: "+DisasterEvents.get(level)
+                        .nativeGeometryNear(c.getSource().getPosition(),512)),false);
                 return 1;
             }))
             .then(Commands.literal("clear").executes(c->{DisasterEvents.get(c.getSource().getLevel()).clearManual();c.getSource().sendSuccess(()->Component.literal("Addon outlines cleared; PMWeather storms unaffected. Use /ew clear all for a complete reset."),true);return 1;})

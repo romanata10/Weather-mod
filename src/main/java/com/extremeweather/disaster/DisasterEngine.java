@@ -70,6 +70,17 @@ public final class DisasterEngine {
             .min(Comparator.comparingDouble(entry->entry.getKey().position.distanceToSqr(pos)))
             .map(entry->entry.getValue().requested());
     }
+    /** Server-side counterpart to the joined-client geometry probe. */
+    public String nativeGeometryNear(Vec3 pos,double range) {
+        return nativeFunnels.entrySet().stream()
+            .filter(entry->!entry.getKey().dead && entry.getKey().position!=null
+                && entry.getKey().position.distanceToSqr(pos)<=range*range)
+            .min(Comparator.comparingDouble(entry->entry.getKey().position.distanceToSqr(pos)))
+            .map(entry->String.format(Locale.ROOT,"%s target=%.2f current=%.2f width=%.1f",
+                entry.getValue().requested(),entry.getValue().shape(),
+                entry.getKey().tornadoShape,entry.getKey().width))
+            .orElse("none");
+    }
     private void maintainNativeFunnels() {
         for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {
             var entry=it.next();var storm=entry.getKey();var preset=entry.getValue();
