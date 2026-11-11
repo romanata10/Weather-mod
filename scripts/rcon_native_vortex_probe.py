@@ -33,7 +33,9 @@ def command(sock, request_id, kind, text):
 shape = sys.argv[2] if len(sys.argv) > 2 else 'wedge'
 if shape not in ('wedge', 'rope', 'multi_vortex'):
     raise ValueError('Only wedge, rope and multi_vortex diagnostic presets are supported')
-ef = 1 if shape == 'rope' else 4
+# Compare rope and wedge with the same EF strength; otherwise their different
+# winds/storm maturity confound a visual comparison of requested morphology.
+ef = 4
 distance = {'wedge': 90, 'rope': 45, 'multi_vortex': 75}[shape]
 
 with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
