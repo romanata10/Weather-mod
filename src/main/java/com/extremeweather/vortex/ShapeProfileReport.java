@@ -38,5 +38,13 @@ public final class ShapeProfileReport {
         System.out.println("Rare natural presets in 100000 deterministic storm IDs: dead_man_walking="+dead+" el_reno="+elReno);
         if(dead<30 || dead>200 || elReno<30 || elReno>200)
             throw new AssertionError("Rare natural shape selection outside expected 0.1% range");
+        for(FunnelShape rare:new FunnelShape[]{FunnelShape.DEAD_MAN_WALKING,FunnelShape.EL_RENO}) {
+            float original=20,peak=rare.rareMatureWidth(original);
+            if(!(peak>original && rare.rareRecedingWidth(original,65)==original &&
+                rare.rareRecedingWidth(original,87)>original &&
+                rare.rareRecedingWidth(original,87)<peak &&
+                rare.rareRecedingWidth(original,110)==peak))
+                throw new AssertionError("Rare native cloud width did not recede with wind: "+rare);
+        }
     }
 }

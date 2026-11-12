@@ -107,22 +107,26 @@ public final class DisasterEngine {
                 float rope=com.extremeweather.vortex.FunnelShape.ROPE.nativeTaper();
                 float target=rope+(preset.shape()-rope)*maturity;
                 if(Math.abs(storm.tornadoShape-target)>.01f)storm.tornadoShape=target;
-                // Extremely rare strong storms can develop their selected
-                // multi-vortex geometry on the SAME native PMWeather funnel.
-                // Do not turn weak storms into giant tornadoes or add wind.
-                if((preset.requested()==com.extremeweather.vortex.FunnelShape.EL_RENO ||
-                    preset.requested()==com.extremeweather.vortex.FunnelShape.DEAD_MAN_WALKING)
-                    && storm.windspeed>=110 && storm.stage>=3) {
-                    float minimum=preset.requested()==com.extremeweather.vortex.FunnelShape.EL_RENO?90:55;
-                    float width=Math.min(220,Math.max(minimum,preset.width()*preset.requested().nativeWidthScale()));
+                // Extremely rare strong storms widen the SAME native cloud.
+                // Recede the added width with PMWeather wind instead of leaving
+                // a giant cloud behind after a formerly mature storm weakens.
+                boolean rare=preset.requested()==com.extremeweather.vortex.FunnelShape.EL_RENO ||
+                    preset.requested()==com.extremeweather.vortex.FunnelShape.DEAD_MAN_WALKING;
+                if(rare && storm.windspeed>=110) {
+                    float width=preset.requested().rareMatureWidth(preset.width());
                     storm.width=Math.max(storm.width,width);
                     storm.smoothWidth=Math.max(storm.smoothWidth,width);
                     storm.maxWidth=Math.max(storm.maxWidth,Math.round(width));
-                    if(storm.vorticies!=null && rareSatellites.add(storm)) {
+                    if(rareSatellites.add(storm) && storm.vorticies!=null) {
                         for(int i=0;i<preset.requested().satellites();i++)
                             storm.vorticies.add(new dev.protomanly.pmweather.weather.Vorticy(
                                 storm,.45f,.30f,1.12f,900));
                     }
+                } else if(rare && rareSatellites.contains(storm)) {
+                    float receding=preset.requested().rareRecedingWidth(preset.width(),storm.windspeed);
+                    storm.width=Math.min(storm.width,Math.max(preset.width(),receding));
+                    storm.smoothWidth=Math.min(storm.smoothWidth,Math.max(preset.width(),receding));
+                    storm.maxWidth=Math.min(storm.maxWidth,Math.max(preset.maxWidth(),Math.round(receding)));
                 }
                 if(ticks%20==0)syncNativeShape(level,storm);
                 continue;

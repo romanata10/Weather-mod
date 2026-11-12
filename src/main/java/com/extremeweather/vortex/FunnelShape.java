@@ -51,6 +51,17 @@ public enum FunnelShape {
         double ratio=radius(0,100,0)/radius(1,100,0);
         return (float)(6+10*Math.max(0,Math.min(1,(ratio-.2)/1.6)));
     }
+    /** Only the two exceptionally rare mature profiles widen their native cloud. */
+    public float rareMatureWidth(float original) {
+        if(this!=EL_RENO && this!=DEAD_MAN_WALKING)return original;
+        float floor=this==EL_RENO?90:55;
+        return Math.min(220,Math.max(floor,original*nativeWidthScale()));
+    }
+    public float rareRecedingWidth(float original,int windspeed) {
+        float peak=rareMatureWidth(original);
+        float strength=(float)Math.max(0,Math.min(1,(windspeed-65)/45.0));
+        return original+(peak-original)*strength;
+    }
     public int satellites() {
         return switch(this) {
             case MULTI_VORTEX -> 4;
