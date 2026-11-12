@@ -185,7 +185,7 @@ jobs:
           RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > runserver-visual/eula.txt
           printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\npause-when-empty-seconds=-1\nallow-flight=true\nlevel-type=minecraft:flat\nview-distance=18\n' "$RCON_PASSWORD" > runserver-visual/server.properties
-          timeout 360s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
+          timeout 450s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" "${CLIENT_PID:-}" 2>/dev/null || true' EXIT
           READY=0
@@ -200,7 +200,7 @@ jobs:
           mkdir -p run
           printf 'version:3955\nnarrator:0\nonboardAccessibility:false\nskipMultiplayerWarning:true\nrenderDistance:18\n' > run/options.txt
           cp run/options.txt options.txt
-          timeout 270s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
+          timeout 360s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
             gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &
             GAME=$!
             python3 -m pip install --quiet pillow > capture-install.log 2>&1 || true
@@ -481,6 +481,14 @@ jobs:
           done
           test -f wave-screen.png || { echo '::warning::Wave framebuffer missing'; exit 1; }
           echo '::notice::Joined-client wavefront frame captured after a measured mob impulse; visible foam/front requires manual review.'
+          if python3 scripts/rcon_funnel_lifetime.py "$RCON_PASSWORD" 25576 > joined-funnel-lifetime.log 2>&1; then
+            tail -3 joined-funnel-lifetime.log
+            echo '::notice::Same native wedge retained server geometry and client taper for 1230+ game ticks; full visual fidelity still requires review.'
+          else
+            echo '::warning::Joined-client long-lived native funnel probe failed'
+            tail -8 joined-funnel-lifetime.log
+            exit 1
+          fi
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash

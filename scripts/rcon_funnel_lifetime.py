@@ -25,11 +25,18 @@ def command(sock, index, kind, text):
             return packet[8:-2].decode(errors='replace')
 
 
-with socket.create_connection(('127.0.0.1', 25575), timeout=8) as sock:
+port = int(sys.argv[2]) if len(sys.argv)>2 else 25575
+with socket.create_connection(('127.0.0.1', port), timeout=8) as sock:
     sock.settimeout(12)
     command(sock, 1, 3, sys.argv[1])
     command(sock, 2, 2, 'ew clear all')
     command(sock, 3, 2, 'forceload add 0 0')
+    if port==25576:
+        from pathlib import Path
+        command(sock, 182, 2, 'gamemode spectator @a')
+        command(sock, 183, 2, 'tp @a 0 90 0 0 12')
+        client_log=Path('client-smoke.log')
+        log_start=client_log.stat().st_size
     spawned = command(sock, 4, 2, 'execute positioned 0 100 0 run ew vortex wedge 4')
     print('one native wedge:', spawned, flush=True)
     if 'One native PMWeather supercell' not in spawned:
@@ -56,5 +63,13 @@ with socket.create_connection(('127.0.0.1', 25575), timeout=8) as sock:
     width = re.search(r'widest native supercell width: (\d+)', after)
     if not width or int(width.group(1)) < 90:
         raise AssertionError('Native wedge geometry did not survive 1230+ ticks: '+after)
+    if port==25576:
+        marker='ExtremeWeather joined client long-lived native funnel:'
+        for _ in range(40):
+            new_log=client_log.read_bytes()[log_start:].decode(errors='ignore')
+            if marker in new_log:break
+            time.sleep(.25)
+        else:raise AssertionError('Joined client did not retain native taper after 1230+ ticks')
+        print('joined client long-lived taper:',next(line for line in new_log.splitlines() if marker in line),flush=True)
     command(sock, 181, 2, 'ew clear all')
     print('Native wedge retained beyond the former 1200-tick timeout', flush=True)

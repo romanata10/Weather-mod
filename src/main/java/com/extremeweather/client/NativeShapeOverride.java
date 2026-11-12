@@ -18,21 +18,24 @@ import java.util.Map;
  * PMWeather may change its local tornadoShape between native sync packets. */
 @EventBusSubscriber(modid=ExtremeWeather.MODID,value=Dist.CLIENT)
 public final class NativeShapeOverride {
-    private record Target(float taper,long expires) {}
+    private record Target(float taper,long born,long expires) {}
     private static final Map<Long,Target> targets=new HashMap<>();
+    private static final java.util.Set<Long> longLivedLogged=new java.util.HashSet<>();
     private static ClientLevel world;
     private static boolean narrowLogged,wideLogged;
     private NativeShapeOverride() {}
     public static void receive(FunnelShapePacket packet) {
         Minecraft game=Minecraft.getInstance();
         if(game.level==null || !Float.isFinite(packet.taper()))return;
-        if(world!=game.level){targets.clear();world=game.level;narrowLogged=false;wideLogged=false;}
-        targets.put(packet.stormId(),new Target(packet.taper(),game.level.getGameTime()+60));
+        if(world!=game.level){targets.clear();longLivedLogged.clear();world=game.level;narrowLogged=false;wideLogged=false;}
+        Target previous=targets.get(packet.stormId());
+        long now=game.level.getGameTime();
+        targets.put(packet.stormId(),new Target(packet.taper(),previous==null?now:previous.born(),now+60));
     }
     @SubscribeEvent(priority=EventPriority.LOWEST)
     public static void tick(ClientTickEvent.Post event) {
         Minecraft game=Minecraft.getInstance();
-        if(game.level!=world){targets.clear();world=game.level;narrowLogged=false;wideLogged=false;}
+        if(game.level!=world){targets.clear();longLivedLogged.clear();world=game.level;narrowLogged=false;wideLogged=false;}
         if(world==null || game.player==null || targets.isEmpty() ||
             dev.protomanly.pmweather.event.GameBusClientEvents.getClientWeather()==null)return;
         long now=world.getGameTime();
@@ -42,6 +45,10 @@ public final class NativeShapeOverride {
             Target target=targets.get(storm.ID);
             if(target!=null && !storm.dead && storm.is(StormTypes.SUPERCELL)) {
                 storm.tornadoShape=target.taper();
+                if(now-target.born()>1230 && longLivedLogged.add(storm.ID))
+                    com.mojang.logging.LogUtils.getLogger().info(
+                        "ExtremeWeather joined client long-lived native funnel: width={} taper={} ageTicks={}",
+                        storm.width,storm.tornadoShape,now-target.born());
                 boolean narrow=storm.width>=8 && storm.width<35,wide=storm.width>=75;
                 if((narrow && !narrowLogged) || (wide && !wideLogged)) {
                     if(narrow)narrowLogged=true;
