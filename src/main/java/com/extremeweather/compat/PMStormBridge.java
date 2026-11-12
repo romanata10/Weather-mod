@@ -55,8 +55,10 @@ public final class PMStormBridge {
         // The former 0.68-axis orbit overlapped the main funnel in the joined
         // multi-vortex frame. Give the four requested native satellites room
         // outside the parent's outer wall; no addon funnel is drawn here.
-        float orbit=outline==FunnelShape.MULTI_VORTEX?1.12f:.68f;
-        float satelliteWidth=outline==FunnelShape.MULTI_VORTEX?.30f:.24f;
+        boolean separate=outline==FunnelShape.MULTI_VORTEX || outline==FunnelShape.DEAD_MAN_WALKING
+            || outline==FunnelShape.EL_RENO;
+        float orbit=separate?1.12f:.68f;
+        float satelliteWidth=separate?.30f:.24f;
         if(storm.vorticies!=null)for(int i=0;i<outline.satellites();i++)
             storm.vorticies.add(new Vorticy(storm,.45f,satelliteWidth,orbit,900+rating*120));
         if(storm.weatherHandler instanceof WeatherHandlerServer handler)handler.syncStormUpdate(storm);

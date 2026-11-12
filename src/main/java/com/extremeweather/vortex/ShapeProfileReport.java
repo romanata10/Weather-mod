@@ -29,5 +29,14 @@ public final class ShapeProfileReport {
         System.out.println("Identical native parameter pairs: "+String.join(", ",collisions));
         System.out.println("Profiles losing mid-height curvature under endpoint-only mapping: "+curved);
         if(FunnelShape.values().length!=23)throw new AssertionError("Expected 23 requested profiles");
+        int dead=0,elReno=0;
+        for(long id=1;id<=100_000;id++) {
+            FunnelShape shape=FunnelShape.natural(id);
+            if(shape==FunnelShape.DEAD_MAN_WALKING)dead++;
+            if(shape==FunnelShape.EL_RENO)elReno++;
+        }
+        System.out.println("Rare natural presets in 100000 deterministic storm IDs: dead_man_walking="+dead+" el_reno="+elReno);
+        if(dead<30 || dead>200 || elReno<30 || elReno>200)
+            throw new AssertionError("Rare natural shape selection outside expected 0.1% range");
     }
 }

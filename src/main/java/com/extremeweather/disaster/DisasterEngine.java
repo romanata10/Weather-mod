@@ -40,6 +40,8 @@ public final class DisasterEngine {
     // Explicit funnels retain their command geometry; naturally adopted
     // PMWeather funnels only receive an outline parameter, never extra wind.
     private final Map<dev.protomanly.pmweather.weather.Storm,NativeFunnel> nativeFunnels=new IdentityHashMap<>();
+    private final Set<dev.protomanly.pmweather.weather.Storm> rareSatellites=
+        Collections.newSetFromMap(new IdentityHashMap<>());
     private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long born,long expires,boolean natural) {}
     public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm,com.extremeweather.vortex.FunnelShape requested) {
         nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks,ticks+1200,false));
@@ -93,7 +95,9 @@ public final class DisasterEngine {
         for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {
             var entry=it.next();var storm=entry.getKey();var preset=entry.getValue();
             if(storm.dead || ticks>=preset.expires() ||
-                (preset.natural() && (storm.stage<3 || storm.windspeed<65))) {it.remove();continue;}
+                (preset.natural() && (storm.stage<3 || storm.windspeed<65))) {
+                rareSatellites.remove(storm);it.remove();continue;
+            }
             if(preset.natural()) {
                 // PMWeather owns natural growth, weakening and cloud width.
                 // A young or weakening funnel tends toward a rope; only the
@@ -103,6 +107,23 @@ public final class DisasterEngine {
                 float rope=com.extremeweather.vortex.FunnelShape.ROPE.nativeTaper();
                 float target=rope+(preset.shape()-rope)*maturity;
                 if(Math.abs(storm.tornadoShape-target)>.01f)storm.tornadoShape=target;
+                // Extremely rare strong storms can develop their selected
+                // multi-vortex geometry on the SAME native PMWeather funnel.
+                // Do not turn weak storms into giant tornadoes or add wind.
+                if((preset.requested()==com.extremeweather.vortex.FunnelShape.EL_RENO ||
+                    preset.requested()==com.extremeweather.vortex.FunnelShape.DEAD_MAN_WALKING)
+                    && storm.windspeed>=110 && storm.stage>=3) {
+                    float minimum=preset.requested()==com.extremeweather.vortex.FunnelShape.EL_RENO?90:55;
+                    float width=Math.min(220,Math.max(minimum,preset.width()*preset.requested().nativeWidthScale()));
+                    storm.width=Math.max(storm.width,width);
+                    storm.smoothWidth=Math.max(storm.smoothWidth,width);
+                    storm.maxWidth=Math.max(storm.maxWidth,Math.round(width));
+                    if(storm.vorticies!=null && rareSatellites.add(storm)) {
+                        for(int i=0;i<preset.requested().satellites();i++)
+                            storm.vorticies.add(new dev.protomanly.pmweather.weather.Vorticy(
+                                storm,.45f,.30f,1.12f,900));
+                    }
+                }
                 if(ticks%20==0)syncNativeShape(level,storm);
                 continue;
             }
@@ -222,7 +243,7 @@ public final class DisasterEngine {
         return manual.spawn(level,pos,shape,ef);
     }
     public void clearManual(){manual.clear();}
-    public void clearAll(){nativeFunnels.clear();manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
+    public void clearAll(){nativeFunnels.clear();rareSatellites.clear();manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
     public int activeSqualls(){return squalls.size();}
     public long squallPushes(){return squalls.stream().mapToLong(field->field.pushes).sum();}
     public int activeCyclones(){return tropical.count();}

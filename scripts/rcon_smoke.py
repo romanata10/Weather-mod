@@ -141,6 +141,17 @@ with connection as conn:
         if not endpoint_wind or int(endpoint_wind.group(1))<minimum:
             raise AssertionError(f"EF{rating} native wind was not initialized: "+endpoint)
         check(150+rating,"ew clear all","PMWeather storms and addon weather cleared")
+    # Rare requested morphologies must stay ONE native supercell with PM native
+    # satellites, not a second addon funnel. Natural rarity is audited separately.
+    for shape,minimum,count in (("dead_man_walking",40,3),("el_reno",80,5)):
+        check(180,f"execute positioned 0 100 0 run ew vortex {shape} 5","One native PMWeather supercell")
+        special=send(conn,181,2,"execute positioned 0 100 0 run ew status")
+        print(f"native {shape} state:",special,flush=True)
+        satellites=re.search(r"native sub-vortices: (\d+)",special)
+        width=re.search(r"widest native supercell width: (\d+)",special)
+        if not satellites or int(satellites.group(1))<count or not width or int(width.group(1))<minimum:
+            raise AssertionError(f"Native {shape} satellites/width missing: "+special)
+        check(182,"ew clear all","PMWeather storms and addon weather cleared")
     # Verify the functional storm siren switches its BLOCKSTATE from PMWeather
     # storms, rather than merely existing as a decorative crafted block.
     check(120,"setblock 4 70 0 extremeweather:storm_siren","block")

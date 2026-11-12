@@ -65,9 +65,16 @@ public enum FunnelShape {
     public static FunnelShape natural(long stormId) {
         FunnelShape[] common={ROPE,CONE,CYLINDER,V_SHAPED,CIGAR,CONCAVE_SIDED,
             STRAIGHT_SIDED,CONVEX_SIDED,TRUNCATED_CONE,WEDGE,LANDSPOUT};
-        int roll=(int)Math.floorMod(stormId ^ (stormId >>> 32),100L);
-        return roll<85?common[Math.floorMod(roll,common.length)]
-            : values()[(int)Math.floorMod((stormId * 0x9e3779b97f4a7c15L) >>> 17,values().length)];
+        long mixed=stormId ^ (stormId >>> 33);
+        mixed*=0xff51afd7ed558ccdL;
+        mixed^=mixed >>> 33;
+        int roll=(int)Math.floorMod(mixed,1000L);
+        // Each special giant/multi-vortex profile is selected only 1/1000
+        // times; ordinary profiles dominate naturally generated storms.
+        if(roll==998)return DEAD_MAN_WALKING;
+        if(roll==999)return EL_RENO;
+        if(roll<900)return common[roll%common.length];
+        return values()[Math.floorMod(roll-900,values().length-2)];
     }
     public static FunnelShape parse(String text) {
         try{return valueOf(text.toUpperCase(Locale.ROOT).replace('-','_'));}
