@@ -176,7 +176,7 @@ jobs:
           RCON_PASSWORD=$(openssl rand -hex 16)
           printf 'eula=true\n' > runserver-visual/eula.txt
           printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\npause-when-empty-seconds=-1\nallow-flight=true\nlevel-type=minecraft:flat\nview-distance=18\n' "$RCON_PASSWORD" > runserver-visual/server.properties
-          timeout 300s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
+          timeout 360s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" "${CLIENT_PID:-}" 2>/dev/null || true' EXIT
           READY=0
@@ -191,7 +191,7 @@ jobs:
           mkdir -p run
           printf 'version:3955\nnarrator:0\nonboardAccessibility:false\nskipMultiplayerWarning:true\nrenderDistance:18\n' > run/options.txt
           cp run/options.txt options.txt
-          timeout 220s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
+          timeout 270s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
             gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &
             GAME=$!
             python3 -m pip install --quiet pillow > capture-install.log 2>&1 || true
@@ -236,6 +236,17 @@ jobs:
                 break
               fi
               sleep .2
+            done
+            for preset in dead-man el-reno; do
+              for attempt in $(seq 1 100); do
+                if [ -f "native-$preset-now" ]; then
+                  if [ ! -f "native-$preset-skip" ]; then
+                    python3 scripts/capture_client.py "native-$preset-screen.png" > "native-$preset-capture.log" 2>&1 || true
+                  fi
+                  break
+                fi
+                sleep .2
+              done
             done
             for attempt in $(seq 1 30); do
               if [ -f cyclone-now ]; then
@@ -385,6 +396,26 @@ jobs:
               while IFS= read -r line; do echo "::warning::Elevated multi probe: $line"; done < <(tail -4 native-multi-top-probe.log)
             fi
           fi
+          for entry in 'dead_man_walking dead-man' 'el_reno el-reno'; do
+            read -r shape label <<< "$entry"
+            if python3 scripts/rcon_native_vortex_probe.py "$RCON_PASSWORD" "$shape" > "native-$label-probe.log" 2>&1; then
+              touch "native-$label-now"
+              for attempt in $(seq 1 60); do
+                if [ -f "native-$label-screen.png" ]; then break; fi
+                sleep .2
+              done
+              if [ -f "native-$label-screen.png" ]; then
+                echo "::notice::Native $shape client frame captured; satellite shape/scale still needs visual review."
+              else
+                echo "::warning::Native $shape client frame unavailable"
+              fi
+            else
+              echo "::warning::Native $shape client staging failed"
+              tail -5 "native-$label-probe.log"
+              # Release the framebuffer worker without mislabeling a failed probe.
+              touch "native-$label-skip" "native-$label-now"
+            fi
+          done
           python3 scripts/rcon_cyclone_probe.py "$RCON_PASSWORD" > cyclone-probe.log 2>&1 || {
             echo '::warning::Native cyclone client probe failed'
             tail -12 cyclone-probe.log
@@ -542,6 +573,15 @@ jobs:
           if [ -f native-multi-top-screen.png ]; then
             python3 scripts/annotate_client_screen.py native-multi-top-screen.png || echo '::warning::Elevated multi-vortex thumbnail unavailable'
           fi
+      - name: Show rare native tornado previews for manual review
+        if: always()
+        shell: bash
+        run: |
+          for preset in dead-man el-reno; do
+            if [ -f "native-$preset-screen.png" ]; then
+              python3 scripts/annotate_client_screen.py "native-$preset-screen.png" || echo "::warning::$preset thumbnail unavailable"
+            fi
+          done
       - name: Show native cyclone client preview in separate check annotations
         if: always()
         shell: bash
@@ -581,6 +621,8 @@ jobs:
             native-rope-screen.png
             native-multi-screen.png
             native-multi-top-screen.png
+            native-dead-man-screen.png
+            native-el-reno-screen.png
             cyclone-screen.png
             sprite-screen.png
             whirlpool-screen.png

@@ -31,12 +31,13 @@ def command(sock, request_id, kind, text):
 
 
 shape = sys.argv[2] if len(sys.argv) > 2 else 'wedge'
-if shape not in ('wedge', 'rope', 'multi_vortex'):
-    raise ValueError('Only wedge, rope and multi_vortex diagnostic presets are supported')
+if shape not in ('wedge', 'rope', 'multi_vortex', 'dead_man_walking', 'el_reno'):
+    raise ValueError('Unsupported native diagnostic preset')
 # Compare rope and wedge with the same EF strength; otherwise their different
 # winds/storm maturity confound a visual comparison of requested morphology.
 ef = 4
-distance = {'wedge': 90, 'rope': 45, 'multi_vortex': 75}[shape]
+distance = {'wedge': 90, 'rope': 45, 'multi_vortex': 75,
+            'dead_man_walking': 105, 'el_reno': 145}[shape]
 
 with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
     sock.settimeout(12)
@@ -67,10 +68,11 @@ with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
     time.sleep(10)
     status = command(sock, 8, 2, 'ew status')
     print(f'native {shape} state:', status, flush=True)
-    if shape == 'multi_vortex':
+    expected={'multi_vortex':4,'dead_man_walking':3,'el_reno':5}.get(shape,0)
+    if expected:
         satellites = re.search(r'native sub-vortices: (\d+)', status)
-        if not satellites or int(satellites.group(1)) < 4:
-            raise AssertionError('Four native PMWeather satellites did not survive: ' + status)
+        if not satellites or int(satellites.group(1)) < expected:
+            raise AssertionError(f'{expected} native PMWeather satellites did not survive: ' + status)
     count = re.search(r'PMWeather storms nearby: (\d+)', status)
     # PMWeather may naturally spawn another storm during the ten-second wait;
     # the command itself adds only one. Do not mistake ambient weather for a
@@ -79,7 +81,8 @@ with socket.create_connection(('127.0.0.1', 25576), timeout=8) as sock:
         raise AssertionError('Native PMWeather storm disappeared: ' + status)
     width = re.search(r'widest native supercell width: (\d+)', status)
     wind = re.search(r'strongest native supercell wind: (\d+)', status)
-    if not width or int(width.group(1)) < (20 if shape == 'wedge' else 8):
+    minimum={'wedge':20,'rope':8,'multi_vortex':8,'dead_man_walking':50,'el_reno':100}[shape]
+    if not width or int(width.group(1)) < minimum:
         raise AssertionError('Native PMWeather supercell lost its funnel width: ' + status)
     if not wind or int(wind.group(1)) < 1:
         raise AssertionError('Native PMWeather storm has no tornadic wind: ' + status)
