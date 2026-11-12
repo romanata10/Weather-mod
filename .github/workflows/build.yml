@@ -489,6 +489,12 @@ jobs:
             tail -8 joined-funnel-lifetime.log
             exit 1
           fi
+          python3 scripts/rcon_natural_squall_probe.py "$RCON_PASSWORD" > natural-squall-probe.log 2>&1 || {
+            echo '::warning::Existing PMWeather squall was not adopted near a joined player'
+            tail -8 natural-squall-probe.log
+            exit 1
+          }
+          tail -2 natural-squall-probe.log
       - name: Require joined-client native funnel lifetime evidence
         shell: bash
         run: |
@@ -499,6 +505,12 @@ jobs:
             exit 1
           }
           echo '::notice::Joined Minecraft client retained the same PMWeather funnel taper past 1230 game ticks; visual silhouette still requires review.'
+          test -f natural-squall-probe.log || { echo '::error::Joined-client native squall adoption probe did not run'; exit 1; }
+          grep -F 'adopted original PMWeather squall:' natural-squall-probe.log || {
+            echo '::error::PMWeather squall cloud was not picked up without an addon disaster command'
+            exit 1
+          }
+          echo '::notice::Addon adopted an existing PMWeather squall beside a joined player; natural occurrence frequency remains unverified.'
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash
@@ -655,6 +667,7 @@ jobs:
             whirlpool-screen.png
             wave-screen.png
             joined-funnel-lifetime.log
+            natural-squall-probe.log
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
