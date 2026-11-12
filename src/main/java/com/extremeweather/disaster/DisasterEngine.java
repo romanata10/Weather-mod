@@ -212,6 +212,10 @@ public final class DisasterEngine {
                 if(windSpeed>.45 && level.random.nextInt(20)==0)gust(level,player,wind);
                 if(thundercloud && level.random.nextInt(45)==0)tryWhirl(level,player,true);
             } else if(level.random.nextInt(75)==0)tryWhirl(level,player,false);
+            // Fair-weather dust devils are independent of PMWeather clouds:
+            // sunlight, dry ground and local warmth determine their chance.
+            if(level.isDay() && !level.isRaining() && level.random.nextInt(8)==0)
+                tryDustDevil(level,player);
             if(stormy && level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN)) {
                 seaEffects(level,player,wind,windSpeed);
                 if(whirlpools.size()<4 && level.random.nextInt(140)==0) {
@@ -308,15 +312,17 @@ public final class DisasterEngine {
                 var cloud=thundercloudAt(level,pos);
                 if((effect.equals("waterspout") || effect.equals("landspout")) && cloud==null)
                     return new EffectResult(false,"A waterspout or landspout requires a nearby PMWeather supercell/squall cloud");
-                if(effect.equals("dust_devil") && cloud!=null)
-                    return new EffectResult(false,"A dust devil requires clear skies without a nearby PMWeather thundercloud");
                 Kind kind=switch(effect) {
                     case "dust_devil" -> Kind.DUST_DEVIL;
                     case "waterspout" -> Kind.WATERSPOUT;
                     case "snow_whirl" -> Kind.SNOW_WHIRL;
                     default -> Kind.LANDSPOUT;
                 };
-                whirls.add(new Whirl(position,kind,360,cloud));
+                Vec3 at=kind==Kind.DUST_DEVIL
+                    ?level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,pos).getCenter()
+                    :position;
+                whirls.add(new Whirl(at,kind,360,cloud,
+                    kind==Kind.DUST_DEVIL?dustSize(level):1));
             }
             case "hurricane", "typhoon", "cyclone" -> {
                 if(!tropical.canTrack(level,position))
@@ -483,6 +489,25 @@ public final class DisasterEngine {
             .min(Comparator.comparingDouble(s->s.position.distanceToSqr(origin.getCenter())))
             .orElse(null);
     }
+    private static float dustSize(ServerLevel level) {
+        int roll=level.random.nextInt(20);
+        return roll<11?.65f:roll<18?1f:1.55f;
+    }
+    private void tryDustDevil(ServerLevel level,ServerPlayer player) {
+        if(whirls.size()>=12)return;
+        BlockPos candidate=player.blockPosition().offset(level.random.nextInt(100)-50,0,level.random.nextInt(100)-50);
+        if(!level.hasChunkAt(candidate))return;
+        BlockPos ground=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,candidate);
+        BlockPos below=ground.below();
+        if(!level.canSeeSky(ground) || level.isRainingAt(ground) ||
+            level.getBlockState(below).isAir() || !level.getFluidState(below).isEmpty())return;
+        boolean sand=level.getBlockState(below).is(Blocks.SAND) || level.getBlockState(below).is(Blocks.RED_SAND);
+        double heat=level.getBiome(ground).value().getBaseTemperature();
+        if(heat<(sand?.65:.9) || level.random.nextInt(sand?2:6)!=0)return;
+        Vec3 origin=Vec3.atBottomCenterOf(ground);
+        if(whirls.stream().anyMatch(w->w.pos.distanceToSqr(origin)<32*32))return;
+        whirls.add(new Whirl(origin,Kind.DUST_DEVIL,200+level.random.nextInt(280),null,dustSize(level)));
+    }
     private void tryWhirl(ServerLevel level,ServerPlayer player,boolean stormy) {
         if(whirls.size()>10)return;
         BlockPos pos=player.blockPosition().offset(level.random.nextInt(100)-50,0,level.random.nextInt(100)-50);
@@ -494,28 +519,26 @@ public final class DisasterEngine {
         double temp=biome.value().getBaseTemperature();
         Kind kind;
         if(stormy)kind=level.getFluidState(pos.below()).is(FluidTags.WATER)?Kind.WATERSPOUT:Kind.LANDSPOUT;
-        else if(!level.isRaining() && temp>1.0 && !biome.is(BiomeTags.IS_OCEAN))kind=Kind.DUST_DEVIL;
         else if(temp<.15)kind=Kind.SNOW_WHIRL;
         else return;
-        // A dust devil is fair-weather, not a hidden supercell/landspout.
-        if(kind==Kind.DUST_DEVIL && cloud!=null)return;
         for(Whirl whirl:whirls)if(whirl.pos.distanceToSqr(pos.getCenter())<40*40)return;
-        whirls.add(new Whirl(pos.getCenter(),kind,300+level.random.nextInt(300),cloud));
+        whirls.add(new Whirl(pos.getCenter(),kind,300+level.random.nextInt(300),cloud,1));
     }
     private void rainbow(ServerLevel level,ServerPlayer player) {
         if(level.random.nextInt(12)==0)sky.rainbow(level,player.position());
     }
     private enum Kind { DUST_DEVIL, WATERSPOUT, LANDSPOUT, SNOW_WHIRL, FIRE_WHIRL }
     private static final class Whirl {
-        Vec3 pos;final Kind kind;final int life;
+        Vec3 pos;final Kind kind;final int life;final float size;
         final dev.protomanly.pmweather.weather.Storm parentCloud;
         int age;
-        Whirl(Vec3 pos,Kind kind,int life,dev.protomanly.pmweather.weather.Storm parentCloud){
-            this.pos=pos;this.kind=kind;this.life=life;this.parentCloud=parentCloud;
+        Whirl(Vec3 pos,Kind kind,int life,dev.protomanly.pmweather.weather.Storm parentCloud,float size){
+            this.pos=pos;this.kind=kind;this.life=life;this.parentCloud=parentCloud;this.size=size;
         }
         void tick(ServerLevel level,long clock) {
             Vec3 wind=WindEngine.getWind(BlockPos.containing(pos),level);
-            pos=pos.add(wind.x*.5,0,wind.z*.5);
+            pos=pos.add(wind.x*(kind==Kind.DUST_DEVIL?.12:.5),0,
+                wind.z*(kind==Kind.DUST_DEVIL?.12:.5));
             if(kind!=Kind.WATERSPOUT && level.hasChunkAt(BlockPos.containing(pos))) {
                 BlockPos surface=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,BlockPos.containing(pos));
                 pos=new Vec3(pos.x,surface.getY()+.15,pos.z);
@@ -525,7 +548,9 @@ public final class DisasterEngine {
                 // shader on the client. No second visible dust particle funnel.
                 if(clock%20==0)for(ServerPlayer viewer:level.players())
                     if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
-                        level.sendParticles(viewer,EWParticles.DUST_VOLUME.get(),true,pos.x,pos.y,pos.z,1,0,0,0,0);
+                        // count=0 carries one particle with size encoded in its
+                        // x velocity. The client factory uses it as scale only.
+                        level.sendParticles(viewer,EWParticles.DUST_VOLUME.get(),true,pos.x,pos.y,pos.z,0,size,0,0,1);
             } else for(int i=0;i<9;i++) {
                 double h=level.random.nextDouble()*16,phase=clock*.25+h*.5+i*2.4;
                 double r=.8+h*.1;
@@ -537,6 +562,7 @@ public final class DisasterEngine {
                     if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
                         level.sendParticles(viewer,particle,true,x,y,z,1,0,.1,0,.02);
             }
+            if(kind==Kind.DUST_DEVIL)return; // visual-only: no block damage, lift or mob impulse
             if(clock%20==0)for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos,pos.add(0,15,0)).inflate(3))) {
                 if(entity instanceof ServerPlayer player && player.isCreative())continue;
                 double dx=entity.getX()-pos.x,dz=entity.getZ()-pos.z;

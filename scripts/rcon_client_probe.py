@@ -65,7 +65,7 @@ for attempt in range(70):
                         command(sock,5+visual_attempt,2,'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run particle extremeweather:dust_volume ~ ~ ~ 0 0 0 0 1 force @a')
                     try:
                         if 'ExtremeWeather dust volume rendered with world GUI visible' in open('client-smoke.log',errors='ignore').read():
-                            command(sock,92,2,'execute as @a at @s run tp @s ~ 85 ~ 0 0')
+                            command(sock,92,2,'execute as @a at @s run tp @s ~ 85 ~ 0 45')
                             command(sock,80,2,'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run ew disaster dust_devil')
                             # Let all readiness-test particles expire before
                             # capturing ONE fresh raymarched billboard. Otherwise

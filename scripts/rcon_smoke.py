@@ -218,10 +218,8 @@ with connection as conn:
     check(106, "ew status", "active sprites: 1")
     time.sleep(3.5)
     check(107, "ew status", "active sprites: 0")
-    under_cloud=send(conn,188,2,"ew disaster dust_devil 0 71 0")
-    print("dust devil under thundercloud:",under_cloud,flush=True)
-    if 'requires clear skies' not in under_cloud:
-        raise AssertionError("Dust devil was accepted beneath a thundercloud: "+under_cloud)
+    check(188,"ew disaster dust_devil 0 71 0","Started dust_devil")
+    print("dust devil coexists with thundercloud (not sourced from it)",flush=True)
     check(31, "ew clear all", "PMWeather storms and addon weather cleared")
     check(62, "ew disaster dust_devil 0 71 0", "Started dust_devil")
     check(63, "ew status", "active small vortices: 1")
