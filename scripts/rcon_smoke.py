@@ -68,11 +68,18 @@ with connection as conn:
     send(conn,182,2,"setblock 4101 64 8 minecraft:stone")
     send(conn,183,2,"setblock 4101 64 8 minecraft:air")
     flowed=False
-    for _ in range(12):
+    for attempt in range(24):
+        # Empty dedicated servers sometimes delay scheduled fluid ticks even
+        # in a force-loaded chunk. Re-notify the adjacent block periodically.
+        if attempt and attempt%6==0:
+            send(conn,182,2,"setblock 4101 64 8 minecraft:stone")
+            send(conn,183,2,"setblock 4101 64 8 minecraft:air")
         time.sleep(.5)
         reply=send(conn,177,2,"execute if block 4101 64 8 minecraft:water")
         if 'passed' in reply.lower():flowed=True;break
-    if not flowed:raise AssertionError("Temporary source did not spread in test basin; cannot validate rollback")
+    if not flowed:
+        source=send(conn,184,2,"execute if block 4100 64 8 minecraft:water")
+        raise AssertionError("Temporary source did not spread in test basin; source="+source+" flow="+reply)
     check(178,"ew clear all","PMWeather storms and addon weather cleared")
     time.sleep(4)
     check(179,"execute if block 4100 64 8 minecraft:air","passed")
