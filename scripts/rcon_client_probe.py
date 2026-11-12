@@ -67,6 +67,21 @@ for attempt in range(70):
                         if 'ExtremeWeather dust volume rendered with world GUI visible' in open('client-smoke.log',errors='ignore').read():
                             command(sock,92,2,'execute as @a at @s run tp @s ~ 85 ~ 0 45')
                             command(sock,80,2,'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run ew disaster dust_devil')
+                            # count=0 encodes the raymarch volume scale in the
+                            # particle's x velocity. Verify all three bounds
+                            # actually reach and render on the joined client.
+                            for index,scale in enumerate((.65,1,1.55),100):
+                                shown=command(sock,index,2,
+                                    f'execute as @a at @s anchored eyes positioned ^ ^-8 ^18 run particle extremeweather:dust_volume ~ ~ ~ {scale} 0 0 1 0 force @a')
+                                if 'Displaying particle' not in shown:
+                                    raise AssertionError(f'Dust size {scale} was not sent: {shown}')
+                            for _ in range(20):
+                                time.sleep(.2)
+                                log=Path('client-smoke.log').read_text(errors='ignore')
+                                if all(f'ExtremeWeather dust size rendered: {size}' in log
+                                       for size in ('small','medium','large')):break
+                            else:raise AssertionError('Joined client did not render all three dust volume bounds')
+                            print('joined client rendered small, medium and large dust volumes',flush=True)
                             # Let all readiness-test particles expire before
                             # capturing ONE fresh raymarched billboard. Otherwise
                             # eight stacked quads fake a denser funnel than users see.

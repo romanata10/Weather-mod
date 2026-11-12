@@ -19,6 +19,7 @@ import org.joml.Vector3f;
  * This is NOT a replacement for PMWeather's own tornado/cloud renderer. */
 public final class DustVolumeParticle extends Particle {
     private static boolean firstRenderLogged;
+    private static int renderedSizeMask;
     private final float scale;
     private static final ParticleRenderType VOLUME=new ParticleRenderType() {
         @Override public BufferBuilder begin(Tesselator tesselator,TextureManager textures) {
@@ -52,6 +53,14 @@ public final class DustVolumeParticle extends Particle {
         if(!firstRenderLogged && net.minecraft.client.Minecraft.getInstance().screen==null) {
             firstRenderLogged=true;
             com.mojang.logging.LogUtils.getLogger().info("ExtremeWeather dust volume rendered with world GUI visible");
+        }
+        if(net.minecraft.client.Minecraft.getInstance().screen==null) {
+            int bit=scale<.8f?1:scale>1.4f?4:2;
+            if((renderedSizeMask & bit)==0) {
+                renderedSizeMask|=bit;
+                com.mojang.logging.LogUtils.getLogger().info("ExtremeWeather dust size rendered: {} scale={}",
+                    bit==1?"small":bit==4?"large":"medium",scale);
+            }
         }
         Vec3 cameraPos=camera.getPosition();
         Vector3f base=new Vector3f((float)(x-cameraPos.x),(float)(y-cameraPos.y),(float)(z-cameraPos.z));
