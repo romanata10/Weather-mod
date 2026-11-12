@@ -175,6 +175,9 @@ public final class DisasterEngine {
                 Whirl w=it.next();
                 BlockPos at=BlockPos.containing(w.pos);
                 if(w.age++>w.life || !level.hasChunkAt(at) ||
+                    ((w.kind==Kind.WATERSPOUT || w.kind==Kind.LANDSPOUT) &&
+                        (w.parentCloud==null || w.parentCloud.dead || w.parentCloud.position==null ||
+                         Math.hypot(w.parentCloud.position.x-w.pos.x,w.parentCloud.position.z-w.pos.z)>180)) ||
                     (w.kind==Kind.WATERSPOUT && !level.getFluidState(at.below()).is(FluidTags.WATER))) {
                     it.remove();continue;
                 }
@@ -302,15 +305,18 @@ public final class DisasterEngine {
                     return new EffectResult(false,"A waterspout requires water below the target position");
                 if(effect.equals("landspout") && level.getFluidState(pos.below()).is(FluidTags.WATER))
                     return new EffectResult(false,"A landspout requires ground below the target position");
-                if((effect.equals("waterspout") || effect.equals("landspout")) && !thundercloudNear(level,pos))
+                var cloud=thundercloudAt(level,pos);
+                if((effect.equals("waterspout") || effect.equals("landspout")) && cloud==null)
                     return new EffectResult(false,"A waterspout or landspout requires a nearby PMWeather supercell/squall cloud");
+                if(effect.equals("dust_devil") && cloud!=null)
+                    return new EffectResult(false,"A dust devil requires clear skies without a nearby PMWeather thundercloud");
                 Kind kind=switch(effect) {
                     case "dust_devil" -> Kind.DUST_DEVIL;
                     case "waterspout" -> Kind.WATERSPOUT;
                     case "snow_whirl" -> Kind.SNOW_WHIRL;
                     default -> Kind.LANDSPOUT;
                 };
-                whirls.add(new Whirl(position,kind,360));
+                whirls.add(new Whirl(position,kind,360,cloud));
             }
             case "hurricane", "typhoon", "cyclone" -> {
                 if(!tropical.canTrack(level,position))
@@ -468,19 +474,22 @@ public final class DisasterEngine {
         level.sendParticles(ParticleTypes.CLOUD,player.getX(),player.getY()+2,player.getZ(),30,10,2,10,.08);
     }
     /** Horizontal footprint of an ordinary PM thundercloud, never a cyclone. */
-    private static boolean thundercloudNear(ServerLevel level,BlockPos origin) {
+    private static dev.protomanly.pmweather.weather.Storm thundercloudAt(ServerLevel level,BlockPos origin) {
         return NearbyStorms.get(level).stormsNearBlock(origin,512).stream()
-            .anyMatch(s->!s.dead && s.position!=null &&
+            .filter(s->!s.dead && s.position!=null &&
                 (s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
                  || s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)) &&
-                Math.hypot(s.position.x-origin.getX(),s.position.z-origin.getZ())<150);
+                Math.hypot(s.position.x-origin.getX(),s.position.z-origin.getZ())<150)
+            .min(Comparator.comparingDouble(s->s.position.distanceToSqr(origin.getCenter())))
+            .orElse(null);
     }
     private void tryWhirl(ServerLevel level,ServerPlayer player,boolean stormy) {
         if(whirls.size()>10)return;
         BlockPos pos=player.blockPosition().offset(level.random.nextInt(100)-50,0,level.random.nextInt(100)-50);
         if(!level.hasChunkAt(pos))return;
         pos=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,pos);
-        if(stormy && !thundercloudNear(level,pos))return;
+        var cloud=thundercloudAt(level,pos);
+        if(stormy && cloud==null)return;
         Holder<Biome> biome=level.getBiome(pos);
         double temp=biome.value().getBaseTemperature();
         Kind kind;
@@ -489,17 +498,21 @@ public final class DisasterEngine {
         else if(temp<.15)kind=Kind.SNOW_WHIRL;
         else return;
         // A dust devil is fair-weather, not a hidden supercell/landspout.
-        if(kind==Kind.DUST_DEVIL && thundercloudNear(level,pos))return;
+        if(kind==Kind.DUST_DEVIL && cloud!=null)return;
         for(Whirl whirl:whirls)if(whirl.pos.distanceToSqr(pos.getCenter())<40*40)return;
-        whirls.add(new Whirl(pos.getCenter(),kind,300+level.random.nextInt(300)));
+        whirls.add(new Whirl(pos.getCenter(),kind,300+level.random.nextInt(300),cloud));
     }
     private void rainbow(ServerLevel level,ServerPlayer player) {
         if(level.random.nextInt(12)==0)sky.rainbow(level,player.position());
     }
     private enum Kind { DUST_DEVIL, WATERSPOUT, LANDSPOUT, SNOW_WHIRL, FIRE_WHIRL }
     private static final class Whirl {
-        Vec3 pos;final Kind kind;final int life;int age;
-        Whirl(Vec3 pos,Kind kind,int life){this.pos=pos;this.kind=kind;this.life=life;}
+        Vec3 pos;final Kind kind;final int life;
+        final dev.protomanly.pmweather.weather.Storm parentCloud;
+        int age;
+        Whirl(Vec3 pos,Kind kind,int life,dev.protomanly.pmweather.weather.Storm parentCloud){
+            this.pos=pos;this.kind=kind;this.life=life;this.parentCloud=parentCloud;
+        }
         void tick(ServerLevel level,long clock) {
             Vec3 wind=WindEngine.getWind(BlockPos.containing(pos),level);
             pos=pos.add(wind.x*.5,0,wind.z*.5);
