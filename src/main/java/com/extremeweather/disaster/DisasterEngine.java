@@ -175,7 +175,8 @@ public final class DisasterEngine {
                 Whirl w=it.next();
                 BlockPos at=BlockPos.containing(w.pos);
                 if(w.age++>w.life || !level.hasChunkAt(at) ||
-                    ((w.kind==Kind.WATERSPOUT || w.kind==Kind.LANDSPOUT) &&
+                    ((w.kind==Kind.WATERSPOUT || w.kind==Kind.LANDSPOUT ||
+                        (w.kind==Kind.SNOW_WHIRL && w.parentCloud!=null)) &&
                         (w.parentCloud==null || w.parentCloud.dead || w.parentCloud.position==null ||
                          Math.hypot(w.parentCloud.position.x-w.pos.x,w.parentCloud.position.z-w.pos.z)>180)) ||
                     (w.kind==Kind.WATERSPOUT && !level.getFluidState(at.below()).is(FluidTags.WATER))) {
@@ -210,8 +211,8 @@ public final class DisasterEngine {
                 if(level.random.nextInt(7)==0)hail(level,player);
                 if(level.random.nextInt(60)==0)specialLightning(level,player);
                 if(windSpeed>.45 && level.random.nextInt(20)==0)gust(level,player,wind);
-                if(thundercloud && level.random.nextInt(45)==0)tryWhirl(level,player,true);
-            } else if(level.random.nextInt(75)==0)tryWhirl(level,player,false);
+                if(thundercloud && level.random.nextInt(45)==0)tryStormWhirl(level,player);
+            }
             // Fair-weather dust devils are independent of PMWeather clouds:
             // sunlight, dry ground and local warmth determine their chance.
             if(level.isDay() && !level.isRaining() && level.random.nextInt(8)==0)
@@ -508,19 +509,17 @@ public final class DisasterEngine {
         if(whirls.stream().anyMatch(w->w.pos.distanceToSqr(origin)<32*32))return;
         whirls.add(new Whirl(origin,Kind.DUST_DEVIL,200+level.random.nextInt(280),null,dustSize(level)));
     }
-    private void tryWhirl(ServerLevel level,ServerPlayer player,boolean stormy) {
+    private void tryStormWhirl(ServerLevel level,ServerPlayer player) {
         if(whirls.size()>10)return;
         BlockPos pos=player.blockPosition().offset(level.random.nextInt(100)-50,0,level.random.nextInt(100)-50);
         if(!level.hasChunkAt(pos))return;
         pos=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,pos);
         var cloud=thundercloudAt(level,pos);
-        if(stormy && cloud==null)return;
+        if(cloud==null)return;
         Holder<Biome> biome=level.getBiome(pos);
         double temp=biome.value().getBaseTemperature();
-        Kind kind;
-        if(stormy)kind=level.getFluidState(pos.below()).is(FluidTags.WATER)?Kind.WATERSPOUT:Kind.LANDSPOUT;
-        else if(temp<.15)kind=Kind.SNOW_WHIRL;
-        else return;
+        Kind kind=level.getFluidState(pos.below()).is(FluidTags.WATER)?Kind.WATERSPOUT:
+            temp<.15?Kind.SNOW_WHIRL:Kind.LANDSPOUT;
         for(Whirl whirl:whirls)if(whirl.pos.distanceToSqr(pos.getCenter())<40*40)return;
         whirls.add(new Whirl(pos.getCenter(),kind,300+level.random.nextInt(300),cloud,1));
     }
