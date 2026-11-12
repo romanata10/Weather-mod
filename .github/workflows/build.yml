@@ -489,6 +489,16 @@ jobs:
             tail -8 joined-funnel-lifetime.log
             exit 1
           fi
+      - name: Require joined-client native funnel lifetime evidence
+        shell: bash
+        run: |
+          test -f joined-funnel-lifetime.log || { echo '::error::Long-lived joined-client probe did not run'; exit 1; }
+          grep -F 'joined client long-lived taper:' joined-funnel-lifetime.log || {
+            echo '::error::A 1230-tick server check alone does not prove joined-client shape persistence'
+            tail -12 joined-funnel-lifetime.log
+            exit 1
+          }
+          echo '::notice::Joined Minecraft client retained the same PMWeather funnel taper past 1230 game ticks; visual silhouette still requires review.'
       - name: Summarize in-world client probe for review
         if: always()
         shell: bash
@@ -644,6 +654,7 @@ jobs:
             sprite-screen.png
             whirlpool-screen.png
             wave-screen.png
+            joined-funnel-lifetime.log
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
