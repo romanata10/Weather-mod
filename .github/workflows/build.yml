@@ -85,7 +85,7 @@ jobs:
           printf 'eula=true\n' > eula.txt
           printf 'eula=true\n' > runserver/eula.txt
           printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\npause-when-empty-seconds=-1\n' "$RCON_PASSWORD" > runserver/server.properties
-          tail -f /dev/null | timeout 180s gradle runServer --no-daemon > runserver-smoke.log 2>&1 &
+          tail -f /dev/null | timeout 270s gradle runServer --no-daemon > runserver-smoke.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           READY=0
@@ -120,6 +120,12 @@ jobs:
           if grep -Fq 'HEADLESS LIMITATION: vanilla water did not flow' rcon-smoke.log; then
             echo '::warning::Empty-server vanilla flow did not occur; only temporary-source placement and cleanup were verified in this run. Earlier isolated-basin CI observed lateral flow.'
           fi
+          python3 scripts/rcon_funnel_lifetime.py "$RCON_PASSWORD" > funnel-lifetime.log 2>&1 || {
+            cat funnel-lifetime.log
+            exit 1
+          }
+          tail -3 funnel-lifetime.log
+          echo '::notice::Same native wedge retained its preset beyond 1230 dedicated-server game ticks; joined-client lifetime remains unverified.'
       - name: Persist temporary flood source through a clean dedicated-server restart
         shell: bash
         run: |
