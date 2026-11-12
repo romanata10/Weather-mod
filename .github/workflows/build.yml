@@ -41,6 +41,13 @@ jobs:
             exit 1
           }
           tail -30 gradle-build.log
+      - name: Audit expressiveness of the 23 requested native funnel presets
+        shell: bash
+        run: |
+          java -cp build/classes/java/main com.extremeweather.vortex.ShapeProfileReport > shape-profiles.log
+          cat shape-profiles.log
+          echo '::notice::Native shape parameters and endpoint mapping audited; this does not certify 23 rendered funnel silhouettes.'
+          tail -2 shape-profiles.log | while IFS= read -r line; do echo "::notice::$line"; done
       - name: Validate runtime PMWeather particle textures
         shell: bash
         run: |
