@@ -300,6 +300,10 @@ public final class DisasterEngine {
                 if(whirls.size()>=12)return new EffectResult(false,"Small vortex limit reached (12 per dimension)");
                 if(effect.equals("waterspout") && !level.getFluidState(pos.below()).is(FluidTags.WATER))
                     return new EffectResult(false,"A waterspout requires water below the target position");
+                if(effect.equals("landspout") && level.getFluidState(pos.below()).is(FluidTags.WATER))
+                    return new EffectResult(false,"A landspout requires ground below the target position");
+                if((effect.equals("waterspout") || effect.equals("landspout")) && !thundercloudNear(level,pos))
+                    return new EffectResult(false,"A waterspout or landspout requires a nearby PMWeather supercell/squall cloud");
                 Kind kind=switch(effect) {
                     case "dust_devil" -> Kind.DUST_DEVIL;
                     case "waterspout" -> Kind.WATERSPOUT;
@@ -463,20 +467,20 @@ public final class DisasterEngine {
         }
         level.sendParticles(ParticleTypes.CLOUD,player.getX(),player.getY()+2,player.getZ(),30,10,2,10,.08);
     }
+    /** Horizontal footprint of an ordinary PM thundercloud, never a cyclone. */
+    private static boolean thundercloudNear(ServerLevel level,BlockPos origin) {
+        return NearbyStorms.get(level).stormsNearBlock(origin,512).stream()
+            .anyMatch(s->!s.dead && s.position!=null &&
+                (s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
+                 || s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)) &&
+                Math.hypot(s.position.x-origin.getX(),s.position.z-origin.getZ())<150);
+    }
     private void tryWhirl(ServerLevel level,ServerPlayer player,boolean stormy) {
         if(whirls.size()>10)return;
         BlockPos pos=player.blockPosition().offset(level.random.nextInt(100)-50,0,level.random.nextInt(100)-50);
         if(!level.hasChunkAt(pos))return;
         pos=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,pos);
-        if(stormy) {
-            BlockPos origin=pos;
-            boolean cloud=NearbyStorms.get(level).stormsNearBlock(origin,512).stream()
-                .anyMatch(s->!s.dead && s.position!=null &&
-                    (s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
-                     || s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)) &&
-                    Math.hypot(s.position.x-origin.getX(),s.position.z-origin.getZ())<150);
-            if(!cloud)return; // waterspouts and landspouts originate under a thundercloud
-        }
+        if(stormy && !thundercloudNear(level,pos))return;
         Holder<Biome> biome=level.getBiome(pos);
         double temp=biome.value().getBaseTemperature();
         Kind kind;
@@ -484,6 +488,8 @@ public final class DisasterEngine {
         else if(!level.isRaining() && temp>1.0 && !biome.is(BiomeTags.IS_OCEAN))kind=Kind.DUST_DEVIL;
         else if(temp<.15)kind=Kind.SNOW_WHIRL;
         else return;
+        // A dust devil is fair-weather, not a hidden supercell/landspout.
+        if(kind==Kind.DUST_DEVIL && thundercloudNear(level,pos))return;
         for(Whirl whirl:whirls)if(whirl.pos.distanceToSqr(pos.getCenter())<40*40)return;
         whirls.add(new Whirl(pos.getCenter(),kind,300+level.random.nextInt(300)));
     }

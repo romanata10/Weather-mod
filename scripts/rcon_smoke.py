@@ -251,11 +251,17 @@ with connection as conn:
     check(33, "ew clear all", "PMWeather storms and addon weather cleared")
     print("prepare water:",send(conn,34,2,"setblock 2 63 0 minecraft:water"),flush=True)
     check(55, "execute if block 2 63 0 minecraft:water", "passed")
+    without_cloud=send(conn,185,2,"ew disaster waterspout 2 64 0")
+    print("waterspout without thundercloud:",without_cloud,flush=True)
+    if 'requires a nearby PMWeather supercell/squall cloud' not in without_cloud:
+        raise AssertionError("Waterspout spawned without its required thundercloud: "+without_cloud)
+    check(186,"execute positioned 2 100 0 run ew storm supercell 70","Spawned PMWeather storm")
     check(35, "ew disaster waterspout 2 64 0", "Started waterspout")
     check(56, "ew status", "active small vortices: 1")
     print("remove water under waterspout:",send(conn,57,2,"setblock 2 63 0 minecraft:air"),flush=True)
     time.sleep(.8)
     check(58, "ew status", "active small vortices: 0")
+    check(187,"ew clear all","PMWeather storms and addon weather cleared")
     print("restore water:",send(conn,59,2,"setblock 2 63 0 minecraft:water"),flush=True)
     check(60, "execute if block 2 63 0 minecraft:water", "passed")
     # Stage a stable water basin BEFORE starting the current: otherwise a
