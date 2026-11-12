@@ -125,7 +125,9 @@ public final class TropicalSystems {
                     if(entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
                     double ex=entity.getX()-center.x,ez=entity.getZ()-center.z;
                     double entityRadius=Math.hypot(ex,ez);
-                    if(Math.abs(entityRadius-radius)>12 || !pushed.add(entity.getUUID()))continue;
+                    if(Math.abs(entityRadius-radius)>12 ||
+                        (entity.getY()>level.getSeaLevel()+4 && !entity.isInWater()) ||
+                        !pushed.add(entity.getUUID()))continue;
                     // Push each entity outward from the wave origin, not in the
                     // direction of whichever player happened to discover it.
                     double inv=entityRadius<.001?0:1/entityRadius;
