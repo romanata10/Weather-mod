@@ -40,11 +40,11 @@ public final class DisasterEngine {
     // Explicit funnels retain their command geometry; naturally adopted
     // PMWeather funnels only receive an outline parameter, never extra wind.
     private final Map<dev.protomanly.pmweather.weather.Storm,NativeFunnel> nativeFunnels=new IdentityHashMap<>();
-    private final Set<dev.protomanly.pmweather.weather.Storm> rareSatellites=
-        Collections.newSetFromMap(new IdentityHashMap<>());
-    private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long born,long expires,boolean natural) {}
+    private final Map<dev.protomanly.pmweather.weather.Storm,
+        List<dev.protomanly.pmweather.weather.Vorticy>> rareSatellites=new IdentityHashMap<>();
+    private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long born,boolean natural) {}
     public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm,com.extremeweather.vortex.FunnelShape requested) {
-        nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks,ticks+1200,false));
+        nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks,false));
     }
     private void adoptNaturalFunnels(ServerLevel level) {
         if(nativeFunnels.size()>=16)return;
@@ -59,7 +59,7 @@ public final class DisasterEngine {
             // mature target, reached gradually as PMWeather's wind strengthens.
             storm.tornadoShape=com.extremeweather.vortex.FunnelShape.ROPE.nativeTaper();
             nativeFunnels.put(storm,new NativeFunnel(shape,storm.width,shape.nativeTaper(),
-                storm.maxWidth,storm.windspeed,ticks,ticks+1200,true));
+                storm.maxWidth,storm.windspeed,ticks,true));
             if(storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
                 handler.syncStormUpdate(storm);
         }
@@ -67,8 +67,8 @@ public final class DisasterEngine {
     /** This is a selected preset, NOT proof of the client's rendered outline. */
     public Optional<com.extremeweather.vortex.FunnelShape> requestedNativeShapeNear(Vec3 pos,double range) {
         return nativeFunnels.entrySet().stream()
-            .filter(entry->!entry.getKey().dead && ticks<entry.getValue().expires()
-                && entry.getKey().position!=null && entry.getKey().position.distanceToSqr(pos)<=range*range)
+            .filter(entry->!entry.getKey().dead && entry.getKey().position!=null
+                && entry.getKey().position.distanceToSqr(pos)<=range*range)
             .min(Comparator.comparingDouble(entry->entry.getKey().position.distanceToSqr(pos)))
             .map(entry->entry.getValue().requested());
     }
@@ -94,9 +94,14 @@ public final class DisasterEngine {
     private void maintainNativeFunnels(ServerLevel level) {
         for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {
             var entry=it.next();var storm=entry.getKey();var preset=entry.getValue();
-            if(storm.dead || ticks>=preset.expires() ||
+            // The old 1200-tick timeout silently forgot a still-living native
+            // tornado after one minute, resetting natural selection and its
+            // satellites. Let PMWeather's death/weakening end the tracking.
+            if(storm.dead ||
                 (preset.natural() && (storm.stage<3 || storm.windspeed<65))) {
-                rareSatellites.remove(storm);it.remove();continue;
+                var added=rareSatellites.remove(storm);
+                if(added!=null && storm.vorticies!=null)storm.vorticies.removeAll(added);
+                it.remove();continue;
             }
             if(preset.natural()) {
                 // PMWeather owns natural growth, weakening and cloud width.
@@ -117,12 +122,15 @@ public final class DisasterEngine {
                     storm.width=Math.max(storm.width,width);
                     storm.smoothWidth=Math.max(storm.smoothWidth,width);
                     storm.maxWidth=Math.max(storm.maxWidth,Math.round(width));
-                    if(rareSatellites.add(storm) && storm.vorticies!=null) {
-                        for(int i=0;i<preset.requested().satellites();i++)
-                            storm.vorticies.add(new dev.protomanly.pmweather.weather.Vorticy(
-                                storm,.45f,.30f,1.12f,900));
+                    if(storm.vorticies!=null && !rareSatellites.containsKey(storm)) {
+                        List<dev.protomanly.pmweather.weather.Vorticy> added=new ArrayList<>();
+                        for(int i=0;i<preset.requested().satellites();i++) {
+                            var satellite=new dev.protomanly.pmweather.weather.Vorticy(storm,.45f,.30f,1.12f,900);
+                            storm.vorticies.add(satellite);added.add(satellite);
+                        }
+                        rareSatellites.put(storm,added);
                     }
-                } else if(rare && rareSatellites.contains(storm)) {
+                } else if(rare && rareSatellites.containsKey(storm)) {
                     float receding=preset.requested().rareRecedingWidth(preset.width(),storm.windspeed);
                     storm.width=Math.min(storm.width,Math.max(preset.width(),receding));
                     storm.smoothWidth=Math.min(storm.smoothWidth,Math.max(preset.width(),receding));
