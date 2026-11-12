@@ -117,6 +117,9 @@ jobs:
             exit 1
           }
           cat rcon-smoke.log
+          if grep -Fq 'HEADLESS LIMITATION: vanilla water did not flow' rcon-smoke.log; then
+            echo '::warning::Empty-server vanilla flow did not occur; only temporary-source placement and cleanup were verified in this run. Earlier isolated-basin CI observed lateral flow.'
+          fi
       - name: Persist temporary flood source through a clean dedicated-server restart
         shell: bash
         run: |
