@@ -36,7 +36,7 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     command(sock,6,2,'execute as @a at @s run tp @s ~ 66 ~ 0 55')
     time.sleep(.4)
     at='execute as @a at @s run '
-    biome=command(sock,7,2,at+'fillbiome ~-4 ~-4 ~-24 ~4 ~4 ~4 minecraft:ocean')
+    biome=command(sock,7,2,at+'fillbiome ~-4 ~-10 ~-24 ~4 ~20 ~4 minecraft:ocean')
     print('wave ocean biome:',biome,flush=True)
     checked=command(sock,8,2,at+'execute if biome ~ ~ ~ minecraft:ocean')
     if 'passed' not in checked.lower():raise AssertionError('Viewer is not in staged ocean: '+checked)
@@ -60,7 +60,11 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
         match=re.search(r'wave entity pushes: (\d+)',status)
         if match and int(match.group(1))>0:
             print('joined-client wave physical state:',status,flush=True)
-            time.sleep(.2)  # give the joined client a frame after the server impulse
+            # Looking down from two blocks above the basin put the camera
+            # inside its dark water. Raise it to view the surface/front.
+            camera=command(sock,40,2,'execute as @a at @s run tp @s ~ 78 ~ 0 25')
+            print('surface camera:',camera,flush=True)
+            time.sleep(.4)
             Path('wave-now').touch()  # capture while the front is still near the camera
             break
     else:
