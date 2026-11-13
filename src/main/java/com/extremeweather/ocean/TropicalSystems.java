@@ -30,7 +30,7 @@ public final class TropicalSystems {
     /** Track the SAME native PMWeather storm that the command created. */
     public boolean track(ServerLevel level,Storm storm,Basin basin) {
         if(storm==null || !canTrack(level,storm.position))return false;
-        systems.add(new System(storm,basin,1200));return true;
+        systems.add(new System(storm,basin));return true;
     }
     public int count(){return systems.size();}
     public int activePulses(){return pulses.size();}
@@ -47,7 +47,8 @@ public final class TropicalSystems {
         if(ticks%40==0 && systems.size()<2)adoptNativeCyclones(level);
         // PMWeather can restore its maximum cloud width between our 40-tick
         // syncs. Keep the existing storm constrained on land every server tick.
-        for(System system:systems)if(!system.storm.dead && level.hasChunkAt(BlockPos.containing(system.storm.position)) &&
+        for(System system:systems)if(!system.storm.dead && system.storm.position!=null &&
+            level.hasChunkAt(BlockPos.containing(system.storm.position)) &&
             !level.getBiome(BlockPos.containing(system.storm.position)).is(BiomeTags.IS_OCEAN))
             system.constrainLandfallWidth();
         if(ticks%10!=0)return;
@@ -58,10 +59,15 @@ public final class TropicalSystems {
         }
         for(Iterator<System> it=systems.iterator();it.hasNext();) {
             System system=it.next();
+            // Do not forget a still-living PMWeather cyclone after an arbitrary
+            // timer: it would regain full cloud width on land without decay.
+            if(system.storm.dead){it.remove();continue;}
+            if(system.storm.position==null)continue;
             system.center=system.storm.position;
-            if(++system.age>system.life || system.storm.dead || !level.hasChunkAt(BlockPos.containing(system.center))) {
-                it.remove();continue;
-            }
+            // A temporarily unloaded landfall chunk must not discard the
+            // tracked cyclone; continue weakening when it loads again.
+            if(!level.hasChunkAt(BlockPos.containing(system.center)))continue;
+            system.age++;
             Vec3 wind=WindEngine.getWind(BlockPos.containing(system.center),level);
             boolean ocean=level.getBiome(BlockPos.containing(system.center)).is(BiomeTags.IS_OCEAN);
             if(ocean)system.seenOcean=true;
@@ -104,7 +110,7 @@ public final class TropicalSystems {
                !level.getBiome(origin).is(Biomes.LUKEWARM_OCEAN))continue;
             com.extremeweather.compat.PMStormBridge.widenCyclone(storm);
             Basin basin=Basin.values()[level.random.nextInt(Basin.values().length)];
-            systems.add(new System(storm,basin,500+level.random.nextInt(1100)));
+            systems.add(new System(storm,basin));
         }
     }
     private static final class Pulse {
@@ -173,10 +179,10 @@ public final class TropicalSystems {
         }
     }
     private static final class System {
-        Vec3 center;final Storm storm;final Basin basin;final int life;
+        Vec3 center;final Storm storm;final Basin basin;
         int age;double power=1;boolean seenOcean,landfallRolled;
-        System(Storm storm,Basin basin,int life){
-            this.storm=storm;this.center=storm.position;this.basin=basin;this.life=life;
+        System(Storm storm,Basin basin){
+            this.storm=storm;this.center=storm.position;this.basin=basin;
         }
         void constrainLandfallWidth() {
             float target=(float)Math.max(36,220*power);
