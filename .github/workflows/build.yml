@@ -596,6 +596,15 @@ jobs:
             DATA=$(tail -3 cyclone-probe.log); DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Native cyclone adoption%0A$DATA"
           fi
+      # GitHub displays only the first 50 check annotations. Put the newly
+      # requested waterspout ahead of archived funnel thumbnails for review.
+      - name: Show native-cloud waterspout preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f waterspout-screen.png ]; then
+            python3 scripts/annotate_client_screen.py waterspout-screen.png || echo '::warning::Waterspout thumbnail unavailable'
+          fi
       - name: Show unmodified client baseline in separate check annotations
         if: always()
         shell: bash
@@ -653,13 +662,6 @@ jobs:
         run: |
           if [ -f sprite-screen.png ]; then
             python3 scripts/annotate_client_screen.py sprite-screen.png || echo '::warning::Sprite thumbnail unavailable'
-          fi
-      - name: Show native-cloud waterspout preview for manual review
-        if: always()
-        shell: bash
-        run: |
-          if [ -f waterspout-screen.png ]; then
-            python3 scripts/annotate_client_screen.py waterspout-screen.png || echo '::warning::Waterspout thumbnail unavailable'
           fi
       - name: Show water whirlpool preview in separate check annotations
         if: always()
