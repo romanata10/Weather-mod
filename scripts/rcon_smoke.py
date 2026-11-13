@@ -305,7 +305,10 @@ with connection as conn:
     if 'Started flood' in second:raise AssertionError("Unsafe adjacent flood source was allowed")
     check(38, "ew clear all", "PMWeather storms and addon weather cleared")
     time.sleep(1.5)
-    check(119,"execute if block 2 64 0 minecraft:air","passed")
+    # Adjacent vanilla water may flow back into the cleaned cell before this
+    # RCON query; verify that our temporary SOURCE is gone, not that no
+    # flowing water from the neighboring anchor can occupy the cell.
+    check(119,"execute unless block 2 64 0 minecraft:water[level=0]","passed")
     # A cleanup issued while the crest's chunk is unloaded must keep the
     # SavedData entry, then remove its own source once the chunk loads again.
     check(160,"forceload add 4008 8","force")
