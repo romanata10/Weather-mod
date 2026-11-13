@@ -574,7 +574,11 @@ public final class DisasterEngine {
                 // A spout must reach toward its parent thundercloud, not stop
                 // sixteen blocks above the surface as the old particle ring did.
                 double height=(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT)?64:16;
-                double h=level.random.nextDouble()*height,phase=clock*.25+h*.5+i*2.4;
+                // Stratify the column: independent random heights left large
+                // empty bands in individual client frames despite many sprites.
+                int bands=(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT)?36:9;
+                double h=(i+level.random.nextDouble())*height/bands;
+                double phase=clock*.25+h*.5+i*2.4;
                 double r=.8+h*(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT?.045:.1);
                 var particle=kind==Kind.WATERSPOUT?EWParticles.WATER.get():kind==Kind.SNOW_WHIRL?EWParticles.SNOW.get():kind==Kind.FIRE_WHIRL?ModParticleTypes.FLAME.get():kind==Kind.DUST_DEVIL?EWParticles.DUST.get():EWParticles.LAND.get();
                 double x=pos.x+Math.cos(phase)*r,y=pos.y+h,z=pos.z+Math.sin(phase)*r;
@@ -583,6 +587,14 @@ public final class DisasterEngine {
                 for(ServerPlayer viewer:level.players())
                     if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
                         level.sendParticles(viewer,particle,true,x,y,z,1,0,.1,0,.02);
+            }
+            if(kind==Kind.WATERSPOUT) {
+                // Keep surface contact legible even when cloud condensation
+                // blends into a bright sky. This is spray, not placed water.
+                for(ServerPlayer viewer:level.players())
+                    if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
+                        level.sendParticles(viewer,ParticleTypes.SPLASH,true,
+                            pos.x,pos.y+.15,pos.z,6,1.1,.05,1.1,.08);
             }
             if(kind==Kind.DUST_DEVIL)return; // visual-only: no block damage, lift or mob impulse
             if(clock%20==0)for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos,pos.add(0,15,0)).inflate(3))) {
