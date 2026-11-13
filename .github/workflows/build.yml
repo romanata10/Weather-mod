@@ -504,8 +504,8 @@ jobs:
           tail -4 wave-probe.log
           # The probe signals at the measured impulse, not after it returns:
           # otherwise the fast-moving front may have left the camera view.
-          for attempt in $(seq 1 70); do
-            if [ -f wave-screen.png ]; then break; fi
+          for attempt in $(seq 1 90); do
+            if [ -f wave-screen.png ] && [ -f wave-later-screen.png ]; then break; fi
             sleep .2
           done
           test -f wave-screen.png && test -f wave-later-screen.png || { echo '::warning::Wave framebuffer pair missing'; exit 1; }
