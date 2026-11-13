@@ -550,8 +550,14 @@ public final class DisasterEngine {
         }
         void tick(ServerLevel level,long clock) {
             Vec3 wind=WindEngine.getWind(BlockPos.containing(pos),level);
-            pos=pos.add(wind.x*(kind==Kind.DUST_DEVIL?.12:.5),0,
+            Vec3 next=pos.add(wind.x*(kind==Kind.DUST_DEVIL?.12:.5),0,
                 wind.z*(kind==Kind.DUST_DEVIL?.12:.5));
+            // A waterspout may follow the wind across a lake, but cannot
+            // continue as a waterspout over a bank or an unloaded chunk.
+            BlockPos nextSurface=BlockPos.containing(next).below();
+            if(kind!=Kind.WATERSPOUT ||
+                (level.hasChunkAt(nextSurface) && level.getFluidState(nextSurface).is(FluidTags.WATER)))
+                pos=next;
             if(kind!=Kind.WATERSPOUT && level.hasChunkAt(BlockPos.containing(pos))) {
                 BlockPos surface=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,BlockPos.containing(pos));
                 pos=new Vec3(pos.x,surface.getY()+.15,pos.z);
