@@ -62,7 +62,9 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
             print('joined-client wave physical state:',status,flush=True)
             # Looking down from two blocks above the basin put the camera
             # inside its dark water. Raise it to view the surface/front.
-            camera=command(sock,40,2,'execute as @a at @s run tp @s ~ 78 ~ 0 25')
+            # From y=78 a 25-degree pitch intersects the water ~30 blocks
+            # ahead; the front is only ~8-12 blocks ahead at this moment.
+            camera=command(sock,40,2,'execute as @a at @s run tp @s ~ 78 ~ 0 55')
             print('surface camera:',camera,flush=True)
             time.sleep(.4)
             Path('wave-now').touch()  # capture while the front is still near the camera
