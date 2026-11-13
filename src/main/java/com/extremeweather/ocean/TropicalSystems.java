@@ -116,17 +116,20 @@ public final class TropicalSystems {
             Set<UUID> pushed=new HashSet<>();
             for(var player:level.players()) {
                 double distance=Math.hypot(player.getX()-center.x,player.getZ()-center.z);
-                if(Math.abs(distance-radius)>12 || !level.hasChunkAt(player.blockPosition()))continue;
+                // A loaded player's search area is an anchor, not the entire
+                // front: reach swimmers/boats farther than ten blocks away.
+                if(Math.abs(distance-radius)>36 || !level.hasChunkAt(player.blockPosition()))continue;
                 if(!level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN) && player.getY()>level.getSeaLevel()+4)continue;
                 double angle=distance<1?level.random.nextDouble()*Math.PI*2:
                     Math.atan2(player.getZ()-center.z,player.getX()-center.x);
                 double dx=Math.cos(angle),dz=Math.sin(angle);
-                for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(10))) {
+                for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(32,8,32))) {
                     if(entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
                     double ex=entity.getX()-center.x,ez=entity.getZ()-center.z;
                     double entityRadius=Math.hypot(ex,ez);
                     if(Math.abs(entityRadius-radius)>12 ||
-                        (entity.getY()>level.getSeaLevel()+4 && !entity.isInWater()) ||
+                        (!entity.isInWater() && !level.getFluidState(entity.blockPosition().below())
+                            .is(net.minecraft.tags.FluidTags.WATER)) ||
                         !pushed.add(entity.getUUID()))continue;
                     // Push each entity outward from the wave origin, not in the
                     // direction of whichever player happened to discover it.
