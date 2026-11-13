@@ -32,7 +32,7 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     command(sock,3,2,'time set noon')
     command(sock,4,2,'weather clear 100000')
     command(sock,5,2,'gamemode spectator @a')
-    command(sock,6,2,'execute as @a at @s run tp @s ~ 100 ~ 0 45')
+    command(sock,6,2,'execute as @a at @s run tp @s ~ 104 ~ 0 -5')
     time.sleep(.5)
     at='execute as @a at @s anchored eyes positioned ^ ^-8 ^20 run '
     floor=command(sock,7,2,at+'fill ~-8 ~-2 ~-8 ~8 ~-2 ~8 minecraft:stone')
@@ -51,3 +51,5 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
         if 'active small vortices: 1' in status:break
     else:raise AssertionError('Waterspout disappeared before client capture: '+status)
     print('joined-client waterspout state:',status,flush=True)
+    # Allow several particle lifetimes to populate the column before capture.
+    time.sleep(2)

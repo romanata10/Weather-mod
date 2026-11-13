@@ -558,9 +558,12 @@ public final class DisasterEngine {
                         // count=0 carries one particle with size encoded in its
                         // x velocity. The client factory uses it as scale only.
                         level.sendParticles(viewer,EWParticles.DUST_VOLUME.get(),true,pos.x,pos.y,pos.z,0,size,0,0,1);
-            } else for(int i=0;i<9;i++) {
-                double h=level.random.nextDouble()*16,phase=clock*.25+h*.5+i*2.4;
-                double r=.8+h*.1;
+            } else for(int i=0;i<(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT?36:9);i++) {
+                // A spout must reach toward its parent thundercloud, not stop
+                // sixteen blocks above the surface as the old particle ring did.
+                double height=(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT)?64:16;
+                double h=level.random.nextDouble()*height,phase=clock*.25+h*.5+i*2.4;
+                double r=.8+h*(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT?.045:.1);
                 var particle=kind==Kind.WATERSPOUT?EWParticles.WATER.get():kind==Kind.SNOW_WHIRL?EWParticles.SNOW.get():kind==Kind.FIRE_WHIRL?ModParticleTypes.FLAME.get():kind==Kind.DUST_DEVIL?EWParticles.DUST.get():EWParticles.LAND.get();
                 double x=pos.x+Math.cos(phase)*r,y=pos.y+h,z=pos.z+Math.sin(phase)*r;
                 // Natural whirls often begin 50 blocks away. Vanilla's default
