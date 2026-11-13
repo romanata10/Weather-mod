@@ -54,7 +54,7 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     else:raise AssertionError('Waterspout disappeared before client capture: '+status)
     print('joined-client waterspout state:',status,flush=True)
     # Allow the column to populate, then ensure it has not drifted off water.
-    time.sleep(2)
+    time.sleep(.5)
     status=command(sock,30,2,'ew status')
     if 'active small vortices: 1' not in status:
         raise AssertionError('Waterspout vanished before framebuffer capture: '+status)

@@ -463,7 +463,8 @@ jobs:
             tail -10 sprite-probe.log
           fi
           python3 scripts/rcon_waterspout_probe.py "$RCON_PASSWORD" > waterspout-probe.log 2>&1 || {
-            echo '::warning::Joined-client PM-cloud waterspout probe failed'
+            DATA=$(tail -12 waterspout-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::error::Joined-client PM-cloud waterspout probe failed%0A$DATA"
             tail -10 waterspout-probe.log
             exit 1
           }
