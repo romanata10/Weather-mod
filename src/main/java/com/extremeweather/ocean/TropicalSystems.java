@@ -141,11 +141,12 @@ public final class TropicalSystems {
                     entity.push(ex*inv*.25,.12,ez*inv*.25);entity.hurtMarked=true;
                     pushes++;
                 }
-                for(int i=0;i<8;i++) {
-                    // Trace a short tangent along the advancing wavefront,
-                    // not a static foam circle around each nearby player.
-                    double along=level.random.nextDouble()*20-10;
-                    double across=level.random.nextDouble()*5-2.5;
+                for(int i=0;i<13;i++) {
+                    // Continuous samples along a short tangent of the
+                    // advancing front. Fully random positions made the crest
+                    // read as isolated foam patches in client screenshots.
+                    double along=(i-6)*2+level.random.nextDouble()*.6-.3;
+                    double across=level.random.nextDouble()*1.2-.6;
                     int x=(int)Math.floor(center.x+dx*(radius+across)-dz*along);
                     int z=(int)Math.floor(center.z+dz*(radius+across)+dx*along);
                     BlockPos crest=new BlockPos(x,level.getSeaLevel()+1,z);
@@ -153,12 +154,12 @@ public final class TropicalSystems {
                     // PMWeather foam is subtle against bright water. Pair it
                     // with vanilla surface splashes so the advancing tangent
                     // is still legible with differing particle settings.
-                    level.sendParticles(ModParticleTypes.FOAM.get(),x+.5,level.getSeaLevel()+.8,z+.5,7,2,.5,2,.15);
-                    level.sendParticles(ParticleTypes.SPLASH,x+.5,level.getSeaLevel()+1.02,z+.5,4,.7,.08,.7,.04);
+                    level.sendParticles(ModParticleTypes.FOAM.get(),x+.5,level.getSeaLevel()+.8,z+.5,4,.65,.2,.65,.06);
+                    level.sendParticles(ParticleTypes.SPLASH,x+.5,level.getSeaLevel()+1.02,z+.5,3,.4,.08,.4,.04);
                     // Pale low-velocity spray gives the crest contrast on
                     // dark ocean water without introducing a solid water wall.
-                    level.sendParticles(ParticleTypes.CLOUD,x+.5,level.getSeaLevel()+1.2,z+.5,3,.5,.04,.5,.005);
-                    if(level.random.nextInt(4)==0)SurgeData.get(level).place(level,crest,100);
+                    level.sendParticles(ParticleTypes.CLOUD,x+.5,level.getSeaLevel()+1.2,z+.5,2,.4,.04,.4,.005);
+                    if(level.random.nextInt(6)==0)SurgeData.get(level).place(level,crest,100);
                 }
             }
         }
