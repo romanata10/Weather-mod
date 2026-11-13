@@ -18,15 +18,15 @@ final class WaveCrestParticle extends TextureSheetParticle {
         gravity=0;
         xd=zd=0;yd=.008;
         lifetime=18;
-        quadSize=2.7f;
-        setColor(.83f,.93f,1f);
-        setAlpha(.82f);
+        quadSize=3.5f;
+        setColor(.9f,.96f,1f);
+        setAlpha(.9f);
         setSpriteFromAge(sprites);
     }
     @Override public void tick() {
         super.tick();
         if(!removed) {
-            setAlpha(.82f*(lifetime-age)/(float)lifetime);
+            setAlpha(.9f*(lifetime-age)/(float)lifetime);
             setSpriteFromAge(sprites);
         }
     }

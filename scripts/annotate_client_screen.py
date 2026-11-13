@@ -17,7 +17,8 @@ prefix=('ClientBaseline' if path.name=='client-baseline.png' else
         'SpriteScreen' if path.name=='sprite-screen.png' else
         'WaterspoutScreen' if path.name=='waterspout-screen.png' else
         'WhirlpoolScreen' if path.name=='whirlpool-screen.png' else
-        'WaveScreen' if path.name=='wave-screen.png' else 'ClientScreen')
+        'WaveScreen' if path.name=='wave-screen.png' else
+        'WaveLaterScreen' if path.name=='wave-later-screen.png' else 'ClientScreen')
 if not path.is_file():
     raise SystemExit(0)
 img=Image.open(path).convert('RGB')

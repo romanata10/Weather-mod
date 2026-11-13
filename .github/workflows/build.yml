@@ -288,6 +288,8 @@ jobs:
             for attempt in $(seq 1 80); do
               if [ -f wave-now ]; then
                 python3 scripts/capture_client.py wave-screen.png > wave-capture.log 2>&1 || true
+                sleep 1
+                python3 scripts/capture_client.py wave-later-screen.png > wave-later-capture.log 2>&1 || true
                 break
               fi
               sleep .2
@@ -506,7 +508,8 @@ jobs:
             if [ -f wave-screen.png ]; then break; fi
             sleep .2
           done
-          test -f wave-screen.png || { echo '::warning::Wave framebuffer missing'; exit 1; }
+          test -f wave-screen.png && test -f wave-later-screen.png || { echo '::warning::Wave framebuffer pair missing'; exit 1; }
+          python3 scripts/compare_wave_screens.py
           if ! grep -Fq 'ExtremeWeather wave crest sprite rendered in joined client' client-smoke.log; then
             echo '::error::Joined client did not render the custom wave crest sprite'
             exit 1
@@ -615,6 +618,9 @@ jobs:
           if [ -f wave-screen.png ]; then
             python3 scripts/annotate_client_screen.py wave-screen.png || echo '::warning::Wave thumbnail unavailable'
           fi
+          if [ -f wave-later-screen.png ]; then
+            python3 scripts/annotate_client_screen.py wave-later-screen.png || echo '::warning::Later wave thumbnail unavailable'
+          fi
       # GitHub displays only the first 50 check annotations. Keep current
       # wave and waterspout frames ahead of archived funnel thumbnails.
       - name: Show native-cloud waterspout preview for manual review
@@ -707,6 +713,7 @@ jobs:
             whirlpool-screen.png
             waterspout-screen.png
             wave-screen.png
+            wave-later-screen.png
             joined-funnel-lifetime.log
             natural-squall-probe.log
           if-no-files-found: ignore
