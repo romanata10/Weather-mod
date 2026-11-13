@@ -271,6 +271,13 @@ jobs:
               fi
               sleep .2
             done
+            for attempt in $(seq 1 60); do
+              if [ -f waterspout-now ]; then
+                python3 scripts/capture_client.py waterspout-screen.png > waterspout-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
             for attempt in $(seq 1 30); do
               if [ -f whirlpool-now ]; then
                 python3 scripts/capture_client.py whirlpool-screen.png > whirlpool-capture.log 2>&1 || true
@@ -455,6 +462,18 @@ jobs:
             echo '::warning::Nighttime PMWeather-cloud sprite probe failed; continuing to water check'
             tail -10 sprite-probe.log
           fi
+          python3 scripts/rcon_waterspout_probe.py "$RCON_PASSWORD" > waterspout-probe.log 2>&1 || {
+            echo '::warning::Joined-client PM-cloud waterspout probe failed'
+            tail -10 waterspout-probe.log
+            exit 1
+          }
+          touch waterspout-now
+          for attempt in $(seq 1 60); do
+            if [ -f waterspout-screen.png ]; then break; fi
+            sleep .2
+          done
+          test -f waterspout-screen.png || { echo '::warning::Waterspout framebuffer missing'; exit 1; }
+          echo '::notice::Waterspout under a native supercell captured; shape/visibility requires manual review.'
           python3 scripts/rcon_whirlpool_probe.py "$RCON_PASSWORD" > whirlpool-probe.log 2>&1 || {
             echo '::warning::Joined-client whirlpool visual probe failed'
             tail -10 whirlpool-probe.log
@@ -635,6 +654,13 @@ jobs:
           if [ -f sprite-screen.png ]; then
             python3 scripts/annotate_client_screen.py sprite-screen.png || echo '::warning::Sprite thumbnail unavailable'
           fi
+      - name: Show native-cloud waterspout preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f waterspout-screen.png ]; then
+            python3 scripts/annotate_client_screen.py waterspout-screen.png || echo '::warning::Waterspout thumbnail unavailable'
+          fi
       - name: Show water whirlpool preview in separate check annotations
         if: always()
         shell: bash
@@ -665,6 +691,7 @@ jobs:
             cyclone-screen.png
             sprite-screen.png
             whirlpool-screen.png
+            waterspout-screen.png
             wave-screen.png
             joined-funnel-lifetime.log
             natural-squall-probe.log
