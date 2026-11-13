@@ -473,6 +473,13 @@ jobs:
             sleep .2
           done
           test -f waterspout-screen.png || { echo '::warning::Waterspout framebuffer missing'; exit 1; }
+          DATA=$(tail -4 waterspout-probe.log); DATA=${DATA//$'\n'/'%0A'}
+          echo "::notice::Waterspout staging (not visibility proof)%0A$DATA"
+          if grep -Fq 'ExtremeWeather waterspout particle rendered:' client-smoke.log; then
+            echo "::notice::$(grep -F 'ExtremeWeather waterspout particle rendered:' client-smoke.log | head -1)"
+          else
+            echo '::warning::No joined-client waterspout particle render observed'
+          fi
           echo '::notice::Waterspout under a native supercell captured; shape/visibility requires manual review.'
           python3 scripts/rcon_whirlpool_probe.py "$RCON_PASSWORD" > whirlpool-probe.log 2>&1 || {
             echo '::warning::Joined-client whirlpool visual probe failed'

@@ -18,9 +18,12 @@ import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 public final class WhirlParticle extends TextureSheetParticle {
     private final SpriteSet sprites;
     private final double driftX, driftZ;
+    private final boolean water;
+    private static boolean loggedWaterRender;
     private WhirlParticle(ClientLevel level,double x,double y,double z,double dx,double dy,double dz,SpriteSet sprites,float r,float g,float b) {
         super(level,x,y,z,dx,dy,dz);
         this.sprites=sprites;
+        this.water=b>.99f && g>.8f;
         this.driftX=dx;
         this.driftZ=dz;
         this.gravity=0;
@@ -38,6 +41,17 @@ public final class WhirlParticle extends TextureSheetParticle {
             this.yd+=.008;
             this.setSpriteFromAge(sprites);
         }
+    }
+    @Override public void render(com.mojang.blaze3d.vertex.VertexConsumer vertices,
+                                 net.minecraft.client.Camera camera,float partialTick) {
+        if(water && !loggedWaterRender && net.minecraft.client.Minecraft.getInstance().screen==null) {
+            loggedWaterRender=true;
+            com.mojang.logging.LogUtils.getLogger().info(
+                "ExtremeWeather waterspout particle rendered: camera {} particle {} distance {}",
+                camera.getPosition(),new net.minecraft.world.phys.Vec3(x,y,z),
+                camera.getPosition().distanceTo(new net.minecraft.world.phys.Vec3(x,y,z)));
+        }
+        super.render(vertices,camera,partialTick);
     }
     @Override public ParticleRenderType getRenderType(){return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;}
     private record Provider(SpriteSet sprites,float r,float g,float b) implements ParticleProvider<SimpleParticleType> {
