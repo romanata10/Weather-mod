@@ -92,7 +92,8 @@ public final class EWCommands {
                     "; native sub-vortices: "+satellites+"; widest native supercell width: "+widestSupercell+
                     "; strongest native supercell wind: "+strongestSupercellWind+
                     "; active squall gusts: "+squalls+
-                    "; active small vortices: "+smallVortices+"; active sprites: "+sprites+
+                    "; active small vortices: "+smallVortices+
+                    "; waterspout position: "+DisasterEvents.get(level).waterspoutPosition()+"; active sprites: "+sprites+
                     "; active whirlpools: "+whirlpools+"; whirlpool pulls: "+whirlpoolPulls+"; squall pushes: "+pushes+
                     "; tracked wildfire blocks: "+fires+"; native cyclones nearby: "+nativeCyclones+
                     "; active cyclone systems: "+cyclones+"; active wave pulses: "+wavePulses+

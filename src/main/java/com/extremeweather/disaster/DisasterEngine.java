@@ -72,6 +72,12 @@ public final class DisasterEngine {
             .min(Comparator.comparingDouble(entry->entry.getKey().position.distanceToSqr(pos)))
             .map(entry->entry.getValue().requested());
     }
+    /** Diagnostic location for framing a moving spout in the joined-client probe. */
+    public String waterspoutPosition() {
+        return whirls.stream().filter(w->w.kind==Kind.WATERSPOUT)
+            .findFirst().map(w->String.format(Locale.ROOT,"%.2f,%.2f,%.2f",w.pos.x,w.pos.y,w.pos.z))
+            .orElse("none");
+    }
     /** Server-side counterpart to the joined-client geometry probe. */
     public String nativeGeometryNear(Vec3 pos,double range) {
         return nativeFunnels.entrySet().stream()

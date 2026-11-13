@@ -58,5 +58,10 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     status=command(sock,30,2,'ew status')
     if 'active small vortices: 1' not in status:
         raise AssertionError('Waterspout vanished before framebuffer capture: '+status)
-    command(sock,31,2,'execute as @a at @s run tp @s ~ ~ ~ -45 -5')
-    print('capture-time waterspout state:',status,flush=True)
+    match=re.search(r'waterspout position: (-?[\d.]+),(-?[\d.]+),(-?[\d.]+)',status)
+    if not match:raise AssertionError('No moving waterspout position in status: '+status)
+    x,y,z=map(float,match.groups())
+    # Follow the actual wind-drifted vortex rather than assuming it stayed
+    # at the pool center. A diagonal view puts its lower column in frame.
+    camera=command(sock,31,2,f'tp @a {x-25:.2f} {y+22:.2f} {z-25:.2f} -45 5')
+    print('capture-time waterspout state:',status,'camera:',camera,flush=True)
