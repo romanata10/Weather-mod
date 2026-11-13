@@ -29,7 +29,7 @@ public final class TropicalSystems {
     }
     /** Track the SAME native PMWeather storm that the command created. */
     public boolean track(ServerLevel level,Storm storm,Basin basin) {
-        if(storm==null || !canTrack(level,storm.position))return false;
+        if(storm==null || storm.position==null || !canTrack(level,storm.position))return false;
         systems.add(new System(storm,basin));return true;
     }
     public int count(){return systems.size();}
@@ -100,7 +100,7 @@ public final class TropicalSystems {
         // multiplayer until that player happened to be picked.
         for(var player:level.players())for(Storm storm:NearbyStorms.get(level).stormsNearPlayer(player,512)) {
             if(systems.size()>=2)return;
-            if(!storm.is(StormTypes.CYCLONE) || storm.dead ||
+            if(!storm.is(StormTypes.CYCLONE) || storm.dead || storm.position==null ||
                systems.stream().anyMatch(s->s.storm==storm))continue;
             BlockPos origin=BlockPos.containing(storm.position);
             if(!level.hasChunkAt(origin) || !level.getBiome(origin).is(BiomeTags.IS_OCEAN))continue;
@@ -224,7 +224,7 @@ public final class TropicalSystems {
                 if(!level.hasChunkAt(player.blockPosition()))continue;
                 double strength=power*(1-Math.abs(dist-48)/110);
                 for(LivingEntity e:level.getEntitiesOfClass(LivingEntity.class,player.getBoundingBox().inflate(12))) {
-                    if(e instanceof net.minecraft.world.entity.player.Player p && p.isCreative())continue;
+                    if(e instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
                     e.push(wind.x*strength*.18,0,wind.z*strength*.18);e.hurtMarked=true;
                 }
                 if(level.random.nextInt(4)==0 && level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN)) {
