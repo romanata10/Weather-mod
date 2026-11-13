@@ -23,14 +23,15 @@ public final class WhirlParticle extends TextureSheetParticle {
     private WhirlParticle(ClientLevel level,double x,double y,double z,double dx,double dy,double dz,SpriteSet sprites,float r,float g,float b) {
         super(level,x,y,z,dx,dy,dz);
         this.sprites=sprites;
-        this.water=b>.99f && g>.8f;
+        this.water=r<.3f && g<.5f && b>.6f;
         this.driftX=dx;
         this.driftZ=dz;
         this.gravity=0;
         this.friction=.94f;
         this.lifetime=38+level.random.nextInt(20);
-        this.quadSize=.7f+level.random.nextFloat()*.65f;
+        this.quadSize=water?2.2f+level.random.nextFloat()*1.3f:.7f+level.random.nextFloat()*.65f;
         this.setColor(r,g,b);
+        if(water)this.setAlpha(.82f);
         this.setSpriteFromAge(sprites);
     }
     @Override public void tick() {
@@ -67,7 +68,7 @@ public final class WhirlParticle extends TextureSheetParticle {
             event.registerSpriteSet(EWParticles.SPRITE_GLOW.get(),sprites->
                 (type,level,x,y,z,dx,dy,dz)->new SpriteGlowParticle(level,x,y,z,sprites));
             event.registerSpriteSet(EWParticles.LAND.get(),sprites->new Provider(sprites,.83f,.79f,.72f));
-            event.registerSpriteSet(EWParticles.WATER.get(),sprites->new Provider(sprites,.62f,.82f,1f));
+            event.registerSpriteSet(EWParticles.WATER.get(),sprites->new Provider(sprites,.27f,.43f,.67f));
             event.registerSpriteSet(EWParticles.SNOW.get(),sprites->new Provider(sprites,.91f,.97f,1f));
         }
     }
