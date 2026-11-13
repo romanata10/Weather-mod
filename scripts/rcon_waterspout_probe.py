@@ -35,8 +35,10 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     command(sock,6,2,'execute as @a at @s run tp @s ~ 104 ~ 0 -5')
     time.sleep(.5)
     at='execute as @a at @s anchored eyes positioned ^ ^-8 ^20 run '
-    floor=command(sock,7,2,at+'fill ~-8 ~-2 ~-8 ~8 ~-2 ~8 minecraft:stone')
-    water=command(sock,8,2,at+'fill ~-8 ~-1 ~-8 ~8 ~-1 ~8 minecraft:water')
+    # PMWeather wind can move the spout beyond a 17-block pool before the
+    # screenshot is taken; keep the water footprint large enough for its drift.
+    floor=command(sock,7,2,at+'fill ~-32 ~-2 ~-32 ~32 ~-2 ~32 minecraft:stone')
+    water=command(sock,8,2,at+'fill ~-32 ~-1 ~-32 ~32 ~-1 ~32 minecraft:water')
     print('waterspout shallow pool:',floor,water,flush=True)
     cloud=command(sock,9,2,at+'execute positioned ~ ~80 ~ run ew storm supercell 70')
     print('single ordinary PM supercell:',cloud,flush=True)
@@ -51,5 +53,10 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
         if 'active small vortices: 1' in status:break
     else:raise AssertionError('Waterspout disappeared before client capture: '+status)
     print('joined-client waterspout state:',status,flush=True)
-    # Allow several particle lifetimes to populate the column before capture.
+    # Allow the column to populate, then ensure it has not drifted off water.
     time.sleep(2)
+    status=command(sock,30,2,'ew status')
+    if 'active small vortices: 1' not in status:
+        raise AssertionError('Waterspout vanished before framebuffer capture: '+status)
+    command(sock,31,2,'execute as @a at @s run tp @s ~ ~ ~ -45 -5')
+    print('capture-time waterspout state:',status,flush=True)
