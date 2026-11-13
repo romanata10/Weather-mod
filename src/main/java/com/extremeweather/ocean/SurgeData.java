@@ -46,8 +46,10 @@ public final class SurgeData extends SavedData {
             BlockPos neighbor=pos.offset(dx,0,dz);
             if(!level.hasChunkAt(neighbor) || level.getFluidState(neighbor).is(FluidTags.WATER))return false;
         }
+        // Never record a source we failed to place: cleanup must not later
+        // erase somebody else's water in a cell that was only phantom-tracked.
+        if(!level.setBlock(pos,Blocks.WATER.defaultBlockState(),3))return false;
         placed.put(pos,level.getGameTime()+duration);
-        level.setBlock(pos,Blocks.WATER.defaultBlockState(),3);
         setDirty();
         return true;
     }
