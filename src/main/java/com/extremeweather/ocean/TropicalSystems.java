@@ -1,5 +1,6 @@
 package com.extremeweather.ocean;
 
+import com.extremeweather.particle.EWParticles;
 import dev.protomanly.pmweather.weather.WindEngine;
 import dev.protomanly.pmweather.weather.Storm;
 import dev.protomanly.pmweather.weather.WeatherHandlerServer;
@@ -159,6 +160,13 @@ public final class TropicalSystems {
                     // Pale low-velocity spray gives the crest contrast on
                     // dark ocean water without introducing a solid water wall.
                     level.sendParticles(ParticleTypes.CLOUD,x+.5,level.getSeaLevel()+1.2,z+.5,2,.4,.04,.4,.005);
+                    // Vanilla foam was too faint against the dark ocean in
+                    // joined-client captures. Render one bounded PM-mist spray
+                    // sprite per sample; this does NOT create a fluid wall.
+                    for(var viewer:level.players())
+                        if(viewer.distanceToSqr(x+.5,level.getSeaLevel()+1.6,z+.5)<120*120)
+                            level.sendParticles(viewer,EWParticles.WAVE_CREST.get(),true,
+                                x+.5,level.getSeaLevel()+1.6,z+.5,0,0,0,0,0);
                     if(level.random.nextInt(6)==0)SurgeData.get(level).place(level,crest,100);
                 }
             }

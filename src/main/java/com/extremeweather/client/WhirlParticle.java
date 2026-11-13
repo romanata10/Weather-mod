@@ -69,6 +69,8 @@ public final class WhirlParticle extends TextureSheetParticle {
                 (type,level,x,y,z,dx,dy,dz)->new SpriteGlowParticle(level,x,y,z,sprites));
             event.registerSpriteSet(EWParticles.LAND.get(),sprites->new Provider(sprites,.83f,.79f,.72f));
             event.registerSpriteSet(EWParticles.WATER.get(),sprites->new Provider(sprites,.27f,.43f,.67f));
+            event.registerSpriteSet(EWParticles.WAVE_CREST.get(),sprites->
+                (type,level,x,y,z,dx,dy,dz)->new WaveCrestParticle(level,x,y,z,sprites));
             event.registerSpriteSet(EWParticles.SNOW.get(),sprites->new Provider(sprites,.91f,.97f,1f));
         }
     }

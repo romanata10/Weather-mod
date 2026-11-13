@@ -507,7 +507,11 @@ jobs:
             sleep .2
           done
           test -f wave-screen.png || { echo '::warning::Wave framebuffer missing'; exit 1; }
-          echo '::notice::Joined-client wavefront frame captured after a measured mob impulse; visible foam/front requires manual review.'
+          if ! grep -Fq 'ExtremeWeather wave crest sprite rendered in joined client' client-smoke.log; then
+            echo '::error::Joined client did not render the custom wave crest sprite'
+            exit 1
+          fi
+          echo '::notice::Joined client rendered custom wave crest; framebuffer shape still requires manual review.'
           if python3 scripts/rcon_funnel_lifetime.py "$RCON_PASSWORD" 25576 > joined-funnel-lifetime.log 2>&1; then
             tail -3 joined-funnel-lifetime.log
             echo '::notice::Same native wedge retained server geometry and client taper for 1230+ game ticks; full visual fidelity still requires review.'
