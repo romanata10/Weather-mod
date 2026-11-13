@@ -604,8 +604,15 @@ jobs:
             DATA=$(tail -3 cyclone-probe.log); DATA=${DATA//$'\n'/'%0A'}
             echo "::notice::Native cyclone adoption%0A$DATA"
           fi
-      # GitHub displays only the first 50 check annotations. Put the newly
-      # requested waterspout ahead of archived funnel thumbnails for review.
+      - name: Show ocean wavefront preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f wave-screen.png ]; then
+            python3 scripts/annotate_client_screen.py wave-screen.png || echo '::warning::Wave thumbnail unavailable'
+          fi
+      # GitHub displays only the first 50 check annotations. Keep current
+      # wave and waterspout frames ahead of archived funnel thumbnails.
       - name: Show native-cloud waterspout preview for manual review
         if: always()
         shell: bash
@@ -677,13 +684,6 @@ jobs:
         run: |
           if [ -f whirlpool-screen.png ]; then
             python3 scripts/annotate_client_screen.py whirlpool-screen.png || echo '::warning::Whirlpool thumbnail unavailable'
-          fi
-      - name: Show ocean wavefront preview for manual review
-        if: always()
-        shell: bash
-        run: |
-          if [ -f wave-screen.png ]; then
-            python3 scripts/annotate_client_screen.py wave-screen.png || echo '::warning::Wave thumbnail unavailable'
           fi
       - uses: actions/upload-artifact@v4
         if: always()
