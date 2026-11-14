@@ -40,21 +40,21 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
     print('wave ocean biome:',biome,flush=True)
     checked=command(sock,8,2,at+'execute if biome ~ ~ ~ minecraft:ocean')
     if 'passed' not in checked.lower():raise AssertionError('Viewer is not in staged ocean: '+checked)
-    floor=command(sock,9,2,at+'fill ~-24 62 ~-24 ~24 62 ~24 minecraft:stone')
-    water=command(sock,10,2,at+'fill ~-24 63 ~-24 ~24 63 ~24 minecraft:water')
+    floor=command(sock,9,2,at+'fill ~-48 62 ~-48 ~48 62 ~48 minecraft:stone')
+    water=command(sock,10,2,at+'fill ~-48 63 ~-48 ~48 63 ~48 minecraft:water')
     print('wave basin:',floor,water,flush=True)
     # Wait for the joined client's chunk rebuild before judging a screenshot;
     # RCON block changes otherwise outpace the first visible terrain frame.
     time.sleep(2)
-    # The cod is outside the old ten-block player search radius: this proves
-    # the expanding front reaches ocean entities beyond the viewer's feet.
-    cod=command(sock,11,2,at+'summon minecraft:cod ~18 63 ~')
+    # Forty blocks from the spectator: outside even the former 32-block
+    # player-anchored entity search, while still in a loaded water chunk.
+    cod=command(sock,11,2,at+'summon minecraft:cod ~40 63 ~')
     print('wave cod:',cod,flush=True)
     if 'Summoned' not in cod:raise AssertionError('Could not stage water mob: '+cod)
     started=command(sock,12,2,at+'execute positioned ~ ~ ~-20 run ew disaster tsunami')
     print('ocean wave:',started,flush=True)
     if 'Started tsunami' not in started:raise AssertionError('Wave failed to start: '+started)
-    for attempt in range(20):
+    for attempt in range(36):
         time.sleep(.5)
         status=command(sock,13+attempt,2,'ew status')
         match=re.search(r'wave entity pushes: (\d+)',status)

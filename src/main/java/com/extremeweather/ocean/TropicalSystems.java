@@ -118,36 +118,41 @@ public final class TropicalSystems {
         Pulse(Vec3 center){this.center=center;}
         void tick(ServerLevel level) {
             double radius=8+age*2.0;
-            // Nearby players are only search anchors. Their overlapping search
-            // boxes must not apply the same wave impulse several times.
+            // Query the loaded water along the moving annulus, not just the
+            // ten-to-thirty blocks around spectators. A real offshore wave
+            // must reach boats and fish before a player reaches its crest.
             Set<UUID> pushed=new HashSet<>();
+            for(int sector=0;sector<16;sector++) {
+                double theta=sector*Math.PI/8;
+                double x=center.x+Math.cos(theta)*radius,z=center.z+Math.sin(theta)*radius;
+                double halfTangent=Math.PI*radius/16+4;
+                double halfBox=halfTangent+12;
+                AABB area=new AABB(x-halfBox,level.getSeaLevel()-5,z-halfBox,
+                                   x+halfBox,level.getSeaLevel()+6,z+halfBox);
+                for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,area)) {
+                    if(!pushed.add(entity.getUUID()) ||
+                        entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
+                    double ex=entity.getX()-center.x,ez=entity.getZ()-center.z;
+                    double entityRadius=Math.hypot(ex,ez);
+                    if(Math.abs(entityRadius-radius)>12 ||
+                        (!entity.isInWater() && !level.getFluidState(entity.blockPosition().below())
+                            .is(net.minecraft.tags.FluidTags.WATER)))continue;
+                    Vec3 velocity=entity.getDeltaMovement();
+                    if(velocity.horizontalDistanceSqr()>=.64)continue;
+                    double inv=entityRadius<.001?0:1/entityRadius;
+                    entity.push(ex*inv*.25,.12,ez*inv*.25);entity.hurtMarked=true;
+                    pushes++;
+                }
+            }
             for(var player:level.players()) {
                 double distance=Math.hypot(player.getX()-center.x,player.getZ()-center.z);
-                // A loaded player's search area is an anchor, not the entire
-                // front: reach swimmers/boats farther than ten blocks away.
+                // Viewers anchor only the short visible foam segment; the
+                // water-only entity impulse above is independent of them.
                 if(Math.abs(distance-radius)>36 || !level.hasChunkAt(player.blockPosition()))continue;
                 if(!level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN) && player.getY()>level.getSeaLevel()+4)continue;
                 double angle=distance<1?level.random.nextDouble()*Math.PI*2:
                     Math.atan2(player.getZ()-center.z,player.getX()-center.x);
                 double dx=Math.cos(angle),dz=Math.sin(angle);
-                for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(32,8,32))) {
-                    if(entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
-                    double ex=entity.getX()-center.x,ez=entity.getZ()-center.z;
-                    double entityRadius=Math.hypot(ex,ez);
-                    if(Math.abs(entityRadius-radius)>12 ||
-                        (!entity.isInWater() && !level.getFluidState(entity.blockPosition().below())
-                            .is(net.minecraft.tags.FluidTags.WATER)) ||
-                        !pushed.add(entity.getUUID()))continue;
-                    // Push each entity outward from the wave origin, not in the
-                    // direction of whichever player happened to discover it.
-                    double inv=entityRadius<.001?0:1/entityRadius;
-                    Vec3 velocity=entity.getDeltaMovement();
-                    // A front can overlap an entity for several 10-tick samples.
-                    // Do not keep accelerating it without limit each sample.
-                    if(velocity.horizontalDistanceSqr()>=.64)continue;
-                    entity.push(ex*inv*.25,.12,ez*inv*.25);entity.hurtMarked=true;
-                    pushes++;
-                }
                 for(int i=0;i<13;i++) {
                     // Continuous samples along a short tangent of the
                     // advancing front. Fully random positions made the crest
