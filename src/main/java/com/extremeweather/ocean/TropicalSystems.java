@@ -166,9 +166,9 @@ public final class TropicalSystems {
                     // Pale low-velocity spray gives the crest contrast on
                     // dark ocean water without introducing a solid water wall.
                     level.sendParticles(ParticleTypes.CLOUD,x+.5,level.getSeaLevel()+1.2,z+.5,2,.4,.04,.4,.005);
-                    // Vanilla foam was too faint against the dark ocean in
-                    // joined-client captures. Render one bounded PM-mist spray
-                    // sprite per sample; this does NOT create a fluid wall.
+                    // Vanilla foam and PM mist were too faint against the
+                    // dark ocean in joined-client captures. Render one bounded
+                    // original whitecap sprite; this does NOT create a fluid wall.
                     for(var viewer:level.players())
                         if(viewer.distanceToSqr(x+.5,level.getSeaLevel()+1.6,z+.5)<120*120)
                             level.sendParticles(viewer,EWParticles.WAVE_CREST.get(),true,
