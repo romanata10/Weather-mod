@@ -515,6 +515,12 @@ jobs:
             exit 1
           fi
           echo '::notice::Joined client rendered custom wave crest; framebuffer shape still requires manual review.'
+          python3 scripts/rcon_remote_wave_probe.py "$RCON_PASSWORD" > remote-wave-probe.log 2>&1 || {
+            DATA=$(tail -10 remote-wave-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::error::Unattended loaded-ocean wave probe failed%0A$DATA"
+            exit 1
+          }
+          echo '::notice::Wave pushed a forceloaded water mob after the only player moved away from the front.'
           if python3 scripts/rcon_funnel_lifetime.py "$RCON_PASSWORD" 25576 > joined-funnel-lifetime.log 2>&1; then
             tail -3 joined-funnel-lifetime.log
             echo '::notice::Same native wedge retained server geometry and client taper for 1230+ game ticks; full visual fidelity still requires review.'
