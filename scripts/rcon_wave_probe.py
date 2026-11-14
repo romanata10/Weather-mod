@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""Joined-client ocean probe: a real cod must receive the tsunami front impulse."""
+import re
+from pathlib import Path
+import socket
+import struct
+import sys
+import time
+
+
+def exact(sock, n):
+    data=b''
+    while len(data)<n:
+        part=sock.recv(n-len(data))
+        if not part:raise ConnectionError('RCON disconnected')
+        data+=part
+    return data
+
+
+def command(sock, index, kind, text):
+    payload=struct.pack('<ii',index,kind)+text.encode()+b'\0\0'
+    sock.sendall(struct.pack('<i',len(payload))+payload)
+    while True:
+        packet=exact(sock,struct.unpack('<i',exact(sock,4))[0])
+        if struct.unpack('<i',packet[:4])[0]==index:
+            return packet[8:-2].decode(errors='replace')
+
+
+with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
+    sock.settimeout(12)
+    command(sock,1,3,sys.argv[1])
+    command(sock,2,2,'ew clear all')
+    command(sock,3,2,'time set noon')
+    command(sock,4,2,'weather clear 100000')
+    command(sock,5,2,'gamemode spectator @a')
+    command(sock,6,2,'execute as @a at @s run tp @s ~ 66 ~ 0 55')
+    time.sleep(.4)
+    at='execute as @a at @s run '
+    biome=command(sock,7,2,at+'fillbiome ~-4 ~-10 ~-24 ~4 ~20 ~4 minecraft:ocean')
+    print('wave ocean biome:',biome,flush=True)
+    checked=command(sock,8,2,at+'execute if biome ~ ~ ~ minecraft:ocean')
+    if 'passed' not in checked.lower():raise AssertionError('Viewer is not in staged ocean: '+checked)
+    floor=command(sock,9,2,at+'fill ~-48 62 ~-48 ~48 62 ~48 minecraft:stone')
+    water=command(sock,10,2,at+'fill ~-48 63 ~-48 ~48 63 ~48 minecraft:water')
+    print('wave basin:',floor,water,flush=True)
+    # Wait for the joined client's chunk rebuild before judging a screenshot;
+    # RCON block changes otherwise outpace the first visible terrain frame.
+    time.sleep(2)
+    # Forty blocks from the spectator: outside even the former 32-block
+    # player-anchored entity search, while still in a loaded water chunk.
+    cod=command(sock,11,2,at+'summon minecraft:cod ~40 63 ~')
+    print('wave cod:',cod,flush=True)
+    if 'Summoned' not in cod:raise AssertionError('Could not stage water mob: '+cod)
+    started=command(sock,12,2,at+'execute positioned ~ ~ ~-20 run ew disaster tsunami')
+    print('ocean wave:',started,flush=True)
+    if 'Started tsunami' not in started:raise AssertionError('Wave failed to start: '+started)
+    for attempt in range(36):
+        time.sleep(.5)
+        status=command(sock,13+attempt,2,'ew status')
+        match=re.search(r'wave entity pushes: (\d+)',status)
+        if match and int(match.group(1))>0:
+            print('joined-client wave physical state:',status,flush=True)
+            # Looking down from two blocks above the basin put the camera
+            # inside its dark water. Raise it to view the surface/front.
+            # From y=78 a 25-degree pitch intersects the water ~30 blocks
+            # ahead; the front is only ~8-12 blocks ahead at this moment.
+            camera=command(sock,40,2,'execute as @a at @s run tp @s ~ 78 ~ 0 55')
+            print('surface camera:',camera,flush=True)
+            time.sleep(.4)
+            Path('wave-now').touch()  # capture while the front is still near the camera
+            break
+    else:
+        raise AssertionError('Wave front never pushed a mob in the ocean basin: '+status)

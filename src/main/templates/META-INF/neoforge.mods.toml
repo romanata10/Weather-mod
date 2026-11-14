@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+[[mods]]
+modId="extremeweather"
+version="${mod_version}"
+displayName="Extreme Weather: PM Addon"
+authors="Arena"
+description='''Weather and disaster addon for ProtoManly's Weather and PMWeatherAPI by nullved.'''
+[[dependencies.extremeweather]]
+modId="neoforge"
+type="required"
+versionRange="[21.1,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.extremeweather]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.22)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.extremeweather]]
+modId="pmweather"
+type="required"
+versionRange="[0.16.4,0.16.5)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.extremeweather]]
+modId="pmweatherapi"
+type="required"
+versionRange="[0.16.4.1,0.16.5)"
+ordering="AFTER"
+side="BOTH"

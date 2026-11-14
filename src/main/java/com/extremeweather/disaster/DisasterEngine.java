@@ -1,0 +1,608 @@
+package com.extremeweather.disaster;
+
+import dev.protomanly.pmweather.weather.WindEngine;
+import dev.protomanly.pmweather.particle.ModParticleTypes;
+import com.extremeweather.particle.EWParticles;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BiomeTags;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.LightningBolt;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.nullved.pmweatherapi.storm.NearbyStorms;
+
+import java.util.*;
+
+/**
+ * Add-on phenomena derived from PMWeather's authoritative storm positions and wind.
+ * All damage, movement and state changes happen only on the server; particles are
+ * broadcast by ServerLevel so every nearby multiplayer client sees the same event.
+ */
+public final class DisasterEngine {
+    private final List<Whirl> whirls=new ArrayList<>();
+    private final List<HailField> hailFields=new ArrayList<>();
+    private final List<SquallField> squalls=new ArrayList<>();
+    private final List<Whirlpool> whirlpools=new ArrayList<>();
+    private final SkyPhenomena sky=new SkyPhenomena();
+    private final com.extremeweather.vortex.ManualVortices manual=new com.extremeweather.vortex.ManualVortices();
+    private final com.extremeweather.ocean.TropicalSystems tropical=new com.extremeweather.ocean.TropicalSystems();
+    private final Map<UUID,Long> lastStorm=new HashMap<>();
+    // Explicit funnels retain their command geometry; naturally adopted
+    // PMWeather funnels only receive an outline parameter, never extra wind.
+    private final Map<dev.protomanly.pmweather.weather.Storm,NativeFunnel> nativeFunnels=new IdentityHashMap<>();
+    private final Map<dev.protomanly.pmweather.weather.Storm,
+        List<dev.protomanly.pmweather.weather.Vorticy>> rareSatellites=new IdentityHashMap<>();
+    private record NativeFunnel(com.extremeweather.vortex.FunnelShape requested,float width,float shape,int maxWidth,int windspeed,long born,boolean natural) {}
+    public void trackNativeFunnel(dev.protomanly.pmweather.weather.Storm storm,com.extremeweather.vortex.FunnelShape requested) {
+        nativeFunnels.put(storm,new NativeFunnel(requested,storm.width,storm.tornadoShape,storm.maxWidth,storm.windspeed,ticks,false));
+    }
+    private void adoptNaturalFunnels(ServerLevel level) {
+        if(nativeFunnels.size()>=16)return;
+        for(ServerPlayer player:level.players())for(var storm:NearbyStorms.get(level).stormsNearPlayer(player,512)) {
+            if(nativeFunnels.size()>=16)return;
+            // Never turn an ordinary thundercloud into a tornado. Wait until
+            // PMWeather itself has raised both its supercell stage and wind.
+            if(storm.dead || !storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
+                || storm.stage<3 || storm.windspeed<65 || nativeFunnels.containsKey(storm))continue;
+            var shape=com.extremeweather.vortex.FunnelShape.natural(storm.ID);
+            // Start with a slender native profile; the chosen shape is the
+            // mature target, reached gradually as PMWeather's wind strengthens.
+            storm.tornadoShape=com.extremeweather.vortex.FunnelShape.ROPE.nativeTaper();
+            nativeFunnels.put(storm,new NativeFunnel(shape,storm.width,shape.nativeTaper(),
+                storm.maxWidth,storm.windspeed,ticks,true));
+            if(storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
+                handler.syncStormUpdate(storm);
+        }
+    }
+    /** This is a selected preset, NOT proof of the client's rendered outline. */
+    public Optional<com.extremeweather.vortex.FunnelShape> requestedNativeShapeNear(Vec3 pos,double range) {
+        return nativeFunnels.entrySet().stream()
+            .filter(entry->!entry.getKey().dead && entry.getKey().position!=null
+                && entry.getKey().position.distanceToSqr(pos)<=range*range)
+            .min(Comparator.comparingDouble(entry->entry.getKey().position.distanceToSqr(pos)))
+            .map(entry->entry.getValue().requested());
+    }
+    /** Diagnostic location for framing a moving spout in the joined-client probe. */
+    public String waterspoutPosition() {
+        return whirls.stream().filter(w->w.kind==Kind.WATERSPOUT)
+            .findFirst().map(w->String.format(Locale.ROOT,"%.2f,%.2f,%.2f",w.pos.x,w.pos.y,w.pos.z))
+            .orElse("none");
+    }
+    /** Server-side counterpart to the joined-client geometry probe. */
+    public String nativeGeometryNear(Vec3 pos,double range) {
+        return nativeFunnels.entrySet().stream()
+            .filter(entry->!entry.getKey().dead && entry.getKey().position!=null
+                && entry.getKey().position.distanceToSqr(pos)<=range*range)
+            .min(Comparator.comparingDouble(entry->entry.getKey().position.distanceToSqr(pos)))
+            .map(entry->String.format(Locale.ROOT,"%s target=%.2f current=%.2f width=%.1f",
+                entry.getValue().requested(),entry.getValue().shape(),
+                entry.getKey().tornadoShape,entry.getKey().width))
+            .orElse("none");
+    }
+    private static void syncNativeShape(ServerLevel level,dev.protomanly.pmweather.weather.Storm storm) {
+        if(storm.weatherHandler instanceof dev.protomanly.pmweather.weather.WeatherHandlerServer handler)
+            handler.syncStormUpdate(storm);
+        for(ServerPlayer player:level.players())if(storm.position!=null &&
+            storm.position.distanceToSqr(player.position())<512*512)
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                new com.extremeweather.compat.FunnelShapePacket(storm.ID,storm.tornadoShape));
+    }
+    private void maintainNativeFunnels(ServerLevel level) {
+        for(var it=nativeFunnels.entrySet().iterator();it.hasNext();) {
+            var entry=it.next();var storm=entry.getKey();var preset=entry.getValue();
+            // The old 1200-tick timeout silently forgot a still-living native
+            // tornado after one minute, resetting natural selection and its
+            // satellites. Let PMWeather's death/weakening end the tracking.
+            if(storm.dead ||
+                (preset.natural() && (storm.stage<3 || storm.windspeed<65))) {
+                var added=rareSatellites.remove(storm);
+                if(added!=null && storm.vorticies!=null)storm.vorticies.removeAll(added);
+                it.remove();continue;
+            }
+            if(preset.natural()) {
+                // PMWeather owns natural growth, weakening and cloud width.
+                // A young or weakening funnel tends toward a rope; only the
+                // continuous native shape control changes, not the storm wind.
+                float maturity=(float)Math.min(1,Math.min((ticks-preset.born())/80.0,
+                    Math.max(0,(storm.windspeed-65)/35.0)));
+                float rope=com.extremeweather.vortex.FunnelShape.ROPE.nativeTaper();
+                float target=rope+(preset.shape()-rope)*maturity;
+                if(Math.abs(storm.tornadoShape-target)>.01f)storm.tornadoShape=target;
+                // Extremely rare strong storms widen the SAME native cloud.
+                // Recede the added width with PMWeather wind instead of leaving
+                // a giant cloud behind after a formerly mature storm weakens.
+                boolean rare=preset.requested()==com.extremeweather.vortex.FunnelShape.EL_RENO ||
+                    preset.requested()==com.extremeweather.vortex.FunnelShape.DEAD_MAN_WALKING;
+                if(rare && storm.windspeed>=110) {
+                    float width=preset.requested().rareMatureWidth(preset.width());
+                    storm.width=Math.max(storm.width,width);
+                    storm.smoothWidth=Math.max(storm.smoothWidth,width);
+                    storm.maxWidth=Math.max(storm.maxWidth,Math.round(width));
+                    if(storm.vorticies!=null && !rareSatellites.containsKey(storm)) {
+                        List<dev.protomanly.pmweather.weather.Vorticy> added=new ArrayList<>();
+                        for(int i=0;i<preset.requested().satellites();i++) {
+                            var satellite=new dev.protomanly.pmweather.weather.Vorticy(storm,.45f,.30f,1.12f,900);
+                            storm.vorticies.add(satellite);added.add(satellite);
+                        }
+                        rareSatellites.put(storm,added);
+                    }
+                } else if(rare && rareSatellites.containsKey(storm)) {
+                    float receding=preset.requested().rareRecedingWidth(preset.width(),storm.windspeed);
+                    storm.width=Math.min(storm.width,Math.max(preset.width(),receding));
+                    storm.smoothWidth=Math.min(storm.smoothWidth,Math.max(preset.width(),receding));
+                    storm.maxWidth=Math.min(storm.maxWidth,Math.max(preset.maxWidth(),Math.round(receding)));
+                }
+                if(ticks%20==0)syncNativeShape(level,storm);
+                continue;
+            }
+            if(storm.width<preset.width() || storm.smoothWidth<preset.width() ||
+               storm.maxWidth<preset.maxWidth() || storm.windspeed<preset.windspeed() ||
+               storm.maxWindspeed<preset.windspeed() || storm.tornadoShape!=preset.shape()) {
+                storm.width=Math.max(storm.width,preset.width());
+                storm.smoothWidth=Math.max(storm.smoothWidth,preset.width());
+                storm.maxWidth=Math.max(storm.maxWidth,preset.maxWidth());
+                storm.windspeed=Math.max(storm.windspeed,preset.windspeed());
+                storm.maxWindspeed=Math.max(storm.maxWindspeed,preset.windspeed());
+                storm.tornadoShape=preset.shape();
+            }
+            if(ticks%20==0)syncNativeShape(level,storm);
+        }
+    }
+    private long ticks;
+
+    public void tick(ServerLevel level) {
+        ticks++;
+        maintainNativeFunnels(level);
+        manual.tick(level);
+        tropical.tick(level);
+        if(ticks%5==0)for(Iterator<HailField> it=hailFields.iterator();it.hasNext();) {
+            HailField field=it.next();
+            if(++field.age>80 || !level.hasChunkAt(BlockPos.containing(field.center)))it.remove();
+            else field.tick(level);
+        }
+        if(ticks%20==0)com.extremeweather.ocean.SurgeData.get(level).tick(level);
+        if(ticks%10==0)for(Iterator<SquallField> it=squalls.iterator();it.hasNext();) {
+            SquallField squall=it.next();
+            if(++squall.age>240 || squall.storm.dead || !level.hasChunkAt(BlockPos.containing(squall.storm.position)))
+                it.remove();
+            else squall.tick(level);
+        }
+        if(ticks%5==0)for(Iterator<Whirlpool> it=whirlpools.iterator();it.hasNext();) {
+            Whirlpool vortex=it.next();
+            if(++vortex.age>240 || !level.hasChunkAt(BlockPos.containing(vortex.center)) ||
+                    !level.getFluidState(BlockPos.containing(vortex.center).below()).is(FluidTags.WATER))it.remove();
+            else vortex.tick(level);
+        }
+        if(ticks%2==0)sky.tick(level);
+        if(ticks%5==0) {
+            for(Iterator<Whirl> it=whirls.iterator();it.hasNext();) {
+                Whirl w=it.next();
+                BlockPos at=BlockPos.containing(w.pos);
+                if(w.age++>w.life || !level.hasChunkAt(at) ||
+                    ((w.kind==Kind.WATERSPOUT || w.kind==Kind.LANDSPOUT ||
+                        (w.kind==Kind.SNOW_WHIRL && w.parentCloud!=null)) &&
+                        (w.parentCloud==null || w.parentCloud.dead || w.parentCloud.position==null ||
+                         Math.hypot(w.parentCloud.position.x-w.pos.x,w.parentCloud.position.z-w.pos.z)>180)) ||
+                    (w.kind==Kind.WATERSPOUT && !level.getFluidState(at.below()).is(FluidTags.WATER))) {
+                    it.remove();continue;
+                }
+                w.tick(level,ticks);
+            }
+        }
+        if(ticks%40!=0)return;
+        adoptNaturalFunnels(level);
+        for(ServerPlayer player:level.players()) {
+            if(!level.hasChunkAt(player.blockPosition()))continue;
+            var storms=NearbyStorms.get(level).stormsNearPlayer(player,512);
+            double distance=Double.POSITIVE_INFINITY;
+            boolean thundercloud=false;
+            for(var storm:storms) {
+                if(storm.dead || storm.position==null)continue;
+                double horizontal=Math.hypot(storm.position.x-player.getX(),storm.position.z-player.getZ());
+                distance=Math.min(distance,horizontal);
+                if(horizontal<180 && (storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
+                    || storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)))thundercloud=true;
+                // A naturally spawned PMWeather squall owns its own cloud. Add
+                // gust physics to THAT storm, not another command-made cloud.
+                if(storm.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)
+                    && squalls.size()<3 && squalls.stream().noneMatch(field->field.storm==storm))
+                    squalls.add(new SquallField(storm));
+            }
+            boolean stormy=distance<180;
+            Vec3 wind=WindEngine.getWind(player.blockPosition(),level);
+            double windSpeed=wind.horizontalDistance();
+            if(stormy) {
+                if(level.random.nextInt(7)==0)hail(level,player);
+                if(level.random.nextInt(60)==0)specialLightning(level,player);
+                if(windSpeed>.45 && level.random.nextInt(20)==0)gust(level,player,wind);
+                if(thundercloud && level.random.nextInt(45)==0)tryStormWhirl(level,player);
+            }
+            // Fair-weather dust devils are independent of PMWeather clouds:
+            // sunlight, dry ground and local warmth determine their chance.
+            if(level.isDay() && !level.isRaining() && level.random.nextInt(8)==0)
+                tryDustDevil(level,player);
+            if(stormy && level.getBiome(player.blockPosition()).is(BiomeTags.IS_OCEAN)) {
+                seaEffects(level,player,wind,windSpeed);
+                if(whirlpools.size()<4 && level.random.nextInt(140)==0) {
+                    BlockPos water=player.blockPosition().offset(level.random.nextInt(48)-24,0,level.random.nextInt(48)-24);
+                    BlockPos surface=new BlockPos(water.getX(),level.getSeaLevel()+1,water.getZ());
+                    if(level.hasChunkAt(surface) && level.getFluidState(surface.below()).is(FluidTags.WATER)
+                            && whirlpools.stream().noneMatch(w->w.center.distanceToSqr(surface.getCenter())<28*28))
+                        whirlpools.add(new Whirlpool(surface.getCenter()));
+                }
+                if(windSpeed>.8 && level.random.nextInt(12)==0)stormSurge(level,player,wind);
+            }
+            if(!stormy && lastStorm.containsKey(player.getUUID()) && ticks-lastStorm.get(player.getUUID())<1800 && level.isDay() && !level.isRaining())
+                rainbow(level,player);
+            if(stormy)lastStorm.put(player.getUUID(),ticks);
+        }
+        lastStorm.entrySet().removeIf(e->ticks-e.getValue()>1800);
+    }
+    private void stormSurge(ServerLevel level,ServerPlayer player,Vec3 wind) {
+        // Shallow storm surge follows the PMWeather wind direction. Source blocks
+        // are saved and removed when the crest recedes, including after a restart.
+        int sea=level.getSeaLevel();
+        var data=com.extremeweather.ocean.SurgeData.get(level);
+        for(int i=0;i<5;i++) {
+            int x=player.getBlockX()+level.random.nextInt(30)-15;
+            int z=player.getBlockZ()+level.random.nextInt(30)-15;
+            BlockPos base=new BlockPos(x,sea,z);
+            if(!level.hasChunkAt(base) || !level.getBiome(base).is(BiomeTags.IS_OCEAN))continue;
+            BlockPos crest=base.above();
+            if(level.getFluidState(base).is(FluidTags.WATER)) {
+                data.place(level,crest,140+level.random.nextInt(100));
+                level.sendParticles(ModParticleTypes.FOAM.get(),x+.5,sea+1,z+.5,10,1,.6,1,.15);
+            }
+        }
+    }
+    public boolean summonFunnel(ServerLevel level,Vec3 pos,com.extremeweather.vortex.FunnelShape shape,int ef) {
+        return manual.spawn(level,pos,shape,ef);
+    }
+    public void clearManual(){manual.clear();}
+    public void clearAll(){nativeFunnels.clear();rareSatellites.clear();manual.clear();whirls.clear();whirlpools.clear();hailFields.clear();squalls.clear();sky.clear();tropical.clear();lastStorm.clear();}
+    public int activeSqualls(){return squalls.size();}
+    public long squallPushes(){return squalls.stream().mapToLong(field->field.pushes).sum();}
+    public int activeCyclones(){return tropical.count();}
+    public int activeWavePulses(){return tropical.activePulses();}
+    public long wavePushes(){return tropical.wavePushes();}
+    public double weakestCyclonePower(){return tropical.weakestPower();}
+    public int widestNativeCycloneWidth(){return tropical.widestNativeWidth();}
+    public int activeSmallVortices(){return whirls.size();}
+    public int activeSprites(){return sky.activeSprites();}
+    public int activeWhirlpools(){return whirlpools.size();}
+    public long whirlpoolPulls(){return whirlpools.stream().mapToLong(w->w.pulls).sum();}
+    public record EffectResult(boolean started,String reason) {}
+    /** Operator-triggered effects: return failure when their actual prerequisites are absent. */
+    public EffectResult trigger(ServerLevel level,Vec3 position,String effect) {
+        BlockPos pos=BlockPos.containing(position);
+        if(!level.hasChunkAt(pos))return new EffectResult(false,"The target chunk is not loaded");
+        switch(effect) {
+            case "hail" -> {
+                if(hailFields.size()>=4)return new EffectResult(false,"Hail limit reached (4 per dimension)");
+                hailFields.add(new HailField(position));
+            }
+            case "whirlpool" -> {
+                if(whirlpools.size()>=6)return new EffectResult(false,"Whirlpool limit reached (6 per dimension)");
+                if(!level.getFluidState(pos.below()).is(FluidTags.WATER))
+                    return new EffectResult(false,"A whirlpool requires water below the target position");
+                whirlpools.add(new Whirlpool(position));
+            }
+            case "rainbow" -> sky.rainbow(level,position);
+            case "sprite" -> {
+                if(!sky.sprite(level,pos))return new EffectResult(false,"Sprite requires night and a nearby PMWeather thundercloud (dayTime="+(level.getDayTime()%24000)+", registered storms="+NearbyStorms.get(level).stormsNearBlock(pos,2048).size()+")");
+            }
+            case "ball_lightning" -> {
+                if(!sky.canSpawnBall())return new EffectResult(false,"Ball lightning limit reached (8 per dimension)");
+                sky.spawnBall(level,position.add(0,4,0));
+            }
+            case "superbolt" -> {
+                LightningBolt bolt=EntityType.LIGHTNING_BOLT.create(level);
+                if(bolt==null)return new EffectResult(false,"Lightning entity creation failed");
+                bolt.moveTo(position.x,position.y,position.z);level.addFreshEntity(bolt);
+                level.sendParticles(ParticleTypes.ELECTRIC_SPARK,position.x,position.y+12,position.z,90,6,12,6,.08);
+            }
+            case "squall" -> {
+                if(squalls.size()>=3)return new EffectResult(false,"Active squall limit reached (3 per dimension)");
+                var storm=com.extremeweather.compat.PMStormBridge.spawn(level,
+                    dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL,position,.7f,1);
+                if(storm==null)return new EffectResult(false,"PMWeather cannot start a squall here or storm limit reached");
+                squalls.add(new SquallField(storm));
+            }
+            case "dust_devil", "waterspout", "landspout", "snow_whirl" -> {
+                if(whirls.size()>=12)return new EffectResult(false,"Small vortex limit reached (12 per dimension)");
+                if(effect.equals("waterspout") && !level.getFluidState(pos.below()).is(FluidTags.WATER))
+                    return new EffectResult(false,"A waterspout requires water below the target position");
+                if(effect.equals("landspout") && level.getFluidState(pos.below()).is(FluidTags.WATER))
+                    return new EffectResult(false,"A landspout requires ground below the target position");
+                var cloud=thundercloudAt(level,pos);
+                if((effect.equals("waterspout") || effect.equals("landspout")) && cloud==null)
+                    return new EffectResult(false,"A waterspout or landspout requires a nearby PMWeather supercell/squall cloud");
+                Kind kind=switch(effect) {
+                    case "dust_devil" -> Kind.DUST_DEVIL;
+                    case "waterspout" -> Kind.WATERSPOUT;
+                    case "snow_whirl" -> Kind.SNOW_WHIRL;
+                    default -> Kind.LANDSPOUT;
+                };
+                Vec3 at=kind==Kind.DUST_DEVIL
+                    ?level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,pos).getCenter()
+                    :position;
+                whirls.add(new Whirl(at,kind,360,cloud,
+                    kind==Kind.DUST_DEVIL?dustSize(level):1));
+            }
+            case "hurricane", "typhoon", "cyclone" -> {
+                if(!tropical.canTrack(level,position))
+                    return new EffectResult(false,"Cyclone tracking limit reached (2 per dimension)");
+                var storm=com.extremeweather.compat.PMStormBridge.cyclone(level,position);
+                if(storm==null)return new EffectResult(false,"PMWeather cannot start a cyclone here or storm limit reached");
+                var basin=switch(effect) {
+                    case "typhoon" -> com.extremeweather.ocean.TropicalSystems.Basin.TYPHOON;
+                    case "cyclone" -> com.extremeweather.ocean.TropicalSystems.Basin.CYCLONE;
+                    default -> com.extremeweather.ocean.TropicalSystems.Basin.HURRICANE;
+                };
+                tropical.track(level,storm,basin);
+            }
+            case "fire_whirl" -> {
+                if(com.extremeweather.compat.PMStormBridge.fireWhirl(level,position)==null)
+                    return new EffectResult(false,"PMWeather cannot start a fire whirl here or storm limit reached");
+            }
+            case "meteotsunami", "tsunami" -> {
+                if(!level.getBiome(pos).is(BiomeTags.IS_OCEAN))
+                    return new EffectResult(false,"A meteotsunami must start over an ocean biome");
+                if(!tropical.spawnPulse(level,position))return new EffectResult(false,"Wave limit reached or chunk unloaded");
+            }
+            case "surge", "flood" -> {
+                if(!com.extremeweather.ocean.SurgeData.get(level).place(level,new BlockPos(pos.getX(),level.getSeaLevel()+1,pos.getZ()),200))
+                    return new EffectResult(false,"Flood crest needs empty space above water at sea level");
+            }
+            default -> {return new EffectResult(false,"Unknown disaster");}
+        }
+        return new EffectResult(true,"Started "+effect+" at "+pos.toShortString());
+    }
+    /** Real PMWeather squall cloud, coupled to server-authoritative gusts.
+     * The PM storm remains the only cloud, so no decorative particle cloud is added. */
+    private static final class SquallField {
+        final dev.protomanly.pmweather.weather.Storm storm;int age;long pushes;
+        SquallField(dev.protomanly.pmweather.weather.Storm storm){this.storm=storm;}
+        void tick(ServerLevel level) {
+            Vec3 center=storm.position;
+            // Scan already loaded entities, not only player viewports: squalls
+            // must affect mobs on dedicated servers even with no player nearby.
+            AABB area=new AABB(center.x-90,level.getMinBuildHeight(),center.z-90,
+                               center.x+90,level.getMaxBuildHeight(),center.z+90);
+            for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,area)) {
+                if(entity instanceof ServerPlayer player && (player.isCreative() || player.isSpectator()))continue;
+                BlockPos at=entity.blockPosition();
+                if(!level.hasChunkAt(at) || Math.hypot(entity.getX()-center.x,entity.getZ()-center.z)>90)continue;
+                Vec3 wind=WindEngine.getWind(at,level);
+                double length=wind.horizontalDistance();
+                // PM wind determines heading; calm or non-finite readings must
+                // never silently turn a gust into a zero/NaN impulse.
+                boolean calm=!Double.isFinite(length) || length<.04;
+                double x=calm?Math.cos(storm.tickCount*.08):wind.x/length;
+                double z=calm?Math.sin(storm.tickCount*.08):wind.z/length;
+                Vec3 next=entity.getDeltaMovement().add(x*.24,.018,z*.24);
+                // Overlapping natural squalls must not accelerate mobs forever.
+                double horizontal=next.horizontalDistance();
+                if(horizontal>1.2)next=new Vec3(next.x*1.2/horizontal,next.y,next.z*1.2/horizontal);
+                entity.setDeltaMovement(next);
+                entity.hurtMarked=true;pushes++;
+                if(age%4==0 && level.canSeeSky(at) && level.random.nextInt(5)==0)
+                    entity.hurt(level.damageSources().generic(),1f);
+            }
+        }
+    }
+    /** Surface whirlpool: PM foam and authoritative water-only entity movement.
+     * It does not claim to be a PMWeather-native fluid renderer. */
+    private static final class Whirlpool {
+        final Vec3 center;int age;long pulls;
+        Whirlpool(Vec3 center){this.center=center;}
+        void tick(ServerLevel level) {
+            // Three connected spirals, not scattered alternating foam rings.
+            // The same age phase rotates every arm around the actual water drain.
+            for(int arm=0;arm<3;arm++)for(int sample=0;sample<16;sample++) {
+                double radius=.75+sample*.36;
+                double angle=arm*Math.PI*2/3 + sample*.48 + age*.22;
+                double x=center.x+Math.cos(angle)*radius,z=center.z+Math.sin(angle)*radius;
+                BlockPos below=BlockPos.containing(x,center.y-1,z);
+                if(level.hasChunkAt(below) && level.getFluidState(below).is(FluidTags.WATER))
+                    level.sendParticles(ModParticleTypes.FOAM.get(),x,center.y+.1,z,1,0,0,0,0);
+            }
+            if(age%4!=0)return;
+            for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,
+                    new AABB(center,center).inflate(7,3,7), e->e.isInWater() && e.isAlive())) {
+                if(entity instanceof net.minecraft.world.entity.player.Player p && (p.isCreative() || p.isSpectator()))continue;
+                double dx=center.x-entity.getX(),dz=center.z-entity.getZ(),dist=Math.hypot(dx,dz);
+                if(dist<.2 || dist>6.5)continue;
+                entity.push(dx/dist*.045-dz/dist*.09,-.018,dz/dist*.045+dx/dist*.09);
+                entity.hurtMarked=true;
+                pulls++;
+            }
+        }
+    }
+    private static final class HailField {
+        final Vec3 center;int age;
+        HailField(Vec3 center){this.center=center;}
+        void tick(ServerLevel level) {
+            level.sendParticles(ParticleTypes.ITEM_SNOWBALL,center.x,center.y+14,center.z,36,13,3,13,.04);
+            if(age%4!=0)return;
+            for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(center,center).inflate(16,6,16))) {
+                if(entity instanceof ServerPlayer player && player.isCreative())continue;
+                if(level.canSeeSky(entity.blockPosition()) && level.random.nextInt(4)==0)
+                    entity.hurt(level.damageSources().generic(),1.0f);
+            }
+        }
+    }
+    private void seaEffects(ServerLevel level,ServerPlayer player,Vec3 wind,double speed) {
+        if(speed<.25)return;
+        // Weather-driven ocean crests: floating players, mobs and boats are pushed
+        // by the same authoritative PMWeather wind, rather than client-only animation.
+        for(var entity:level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,player.getBoundingBox().inflate(24),e->e.isInWater())) {
+            double phase=ticks*.055+entity.getX()*.31+entity.getZ()*.19;
+            double height=Math.min(.10,speed*.065);
+            entity.push(wind.x*.08,Math.cos(phase)*height,wind.z*.08);
+            entity.hurtMarked=true;
+        }
+        for(int i=0;i<24;i++) {
+            BlockPos pos=player.blockPosition().offset(level.random.nextInt(40)-20,0,level.random.nextInt(40)-20);
+            if(!level.hasChunkAt(pos))continue;
+            BlockPos surface=level.getHeightmapPos(Heightmap.Types.OCEAN_FLOOR,pos);
+            int sea=level.getSeaLevel();
+            if(!level.getFluidState(new BlockPos(pos.getX(),sea-1,pos.getZ())).is(FluidTags.WATER))continue;
+            double phase=ticks*.05+pos.getX()*.22+pos.getZ()*.17;
+            if(Math.sin(phase)>.82)
+                level.sendParticles(ModParticleTypes.FOAM.get(),pos.getX()+.5,sea+.1,pos.getZ()+.5,3,1,.2,1,.03);
+        }
+    }
+    private void hail(ServerLevel level,ServerPlayer player) {
+        if(!level.canSeeSky(player.blockPosition()))return;
+        level.sendParticles(ParticleTypes.ITEM_SNOWBALL,player.getX(),player.getY()+12,player.getZ(),35,12,4,12,.06);
+        if(level.random.nextInt(3)==0 && !player.isCreative())player.hurt(level.damageSources().generic(),1.0f);
+    }
+    private void specialLightning(ServerLevel level,ServerPlayer player) {
+        BlockPos pos=player.blockPosition().offset(level.random.nextInt(48)-24,0,level.random.nextInt(48)-24);
+        if(!level.hasChunkAt(pos))return;
+        pos=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,pos);
+        if(level.random.nextInt(8)==0) {
+            // Superbolt: exceptionally powerful cloud-to-ground strike.
+            LightningBolt bolt=EntityType.LIGHTNING_BOLT.create(level);
+            if(bolt!=null){bolt.moveTo(pos.getX()+.5,pos.getY(),pos.getZ()+.5);level.addFreshEntity(bolt);}
+            level.sendParticles(ParticleTypes.ELECTRIC_SPARK,pos.getX(),pos.getY()+12,pos.getZ(),100,5,12,5,.15);
+        } else if(level.random.nextInt(4)==0) {
+            // Upper-atmosphere red sprite: visual only, no ground damage.
+            long dayTime=level.getDayTime()%24000;
+            if(dayTime>=13000 && dayTime<=23000)sky.sprite(level,pos);
+        } else {
+            // Rare ball lightning moves through the air and lightly shocks entities.
+            sky.spawnBall(level,pos.getCenter().add(0,4,0));
+        }
+    }
+    private void gust(ServerLevel level,ServerPlayer player,Vec3 wind) {
+        for(var entity:level.getEntitiesOfClass(LivingEntity.class,player.getBoundingBox().inflate(15))) {
+            if(entity instanceof ServerPlayer p && p.isCreative())continue;
+            entity.push(wind.x*.35,.04,wind.z*.35);
+            entity.hurtMarked=true;
+        }
+        level.sendParticles(ParticleTypes.CLOUD,player.getX(),player.getY()+2,player.getZ(),30,10,2,10,.08);
+    }
+    /** Horizontal footprint of an ordinary PM thundercloud, never a cyclone. */
+    private static dev.protomanly.pmweather.weather.Storm thundercloudAt(ServerLevel level,BlockPos origin) {
+        return NearbyStorms.get(level).stormsNearBlock(origin,512).stream()
+            .filter(s->!s.dead && s.position!=null &&
+                (s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SUPERCELL)
+                 || s.is(dev.protomanly.pmweather.weather.storms.StormTypes.SQUALL)) &&
+                Math.hypot(s.position.x-origin.getX(),s.position.z-origin.getZ())<150)
+            .min(Comparator.comparingDouble(s->s.position.distanceToSqr(origin.getCenter())))
+            .orElse(null);
+    }
+    private static float dustSize(ServerLevel level) {
+        int roll=level.random.nextInt(20);
+        return roll<11?.65f:roll<18?1f:1.55f;
+    }
+    private void tryDustDevil(ServerLevel level,ServerPlayer player) {
+        if(whirls.size()>=12)return;
+        BlockPos candidate=player.blockPosition().offset(level.random.nextInt(100)-50,0,level.random.nextInt(100)-50);
+        if(!level.hasChunkAt(candidate))return;
+        BlockPos ground=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,candidate);
+        BlockPos below=ground.below();
+        if(!level.canSeeSky(ground) || level.isRainingAt(ground) ||
+            level.getBlockState(below).isAir() || !level.getFluidState(below).isEmpty())return;
+        boolean sand=level.getBlockState(below).is(Blocks.SAND) || level.getBlockState(below).is(Blocks.RED_SAND);
+        double heat=level.getBiome(ground).value().getBaseTemperature();
+        if(heat<(sand?.65:.9) || level.random.nextInt(sand?2:6)!=0)return;
+        Vec3 origin=Vec3.atBottomCenterOf(ground);
+        if(whirls.stream().anyMatch(w->w.pos.distanceToSqr(origin)<32*32))return;
+        whirls.add(new Whirl(origin,Kind.DUST_DEVIL,200+level.random.nextInt(280),null,dustSize(level)));
+    }
+    private void tryStormWhirl(ServerLevel level,ServerPlayer player) {
+        if(whirls.size()>10)return;
+        BlockPos pos=player.blockPosition().offset(level.random.nextInt(100)-50,0,level.random.nextInt(100)-50);
+        if(!level.hasChunkAt(pos))return;
+        pos=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,pos);
+        var cloud=thundercloudAt(level,pos);
+        if(cloud==null)return;
+        Holder<Biome> biome=level.getBiome(pos);
+        double temp=biome.value().getBaseTemperature();
+        Kind kind=level.getFluidState(pos.below()).is(FluidTags.WATER)?Kind.WATERSPOUT:
+            temp<.15?Kind.SNOW_WHIRL:Kind.LANDSPOUT;
+        for(Whirl whirl:whirls)if(whirl.pos.distanceToSqr(pos.getCenter())<40*40)return;
+        whirls.add(new Whirl(pos.getCenter(),kind,300+level.random.nextInt(300),cloud,1));
+    }
+    private void rainbow(ServerLevel level,ServerPlayer player) {
+        if(level.random.nextInt(12)==0)sky.rainbow(level,player.position());
+    }
+    private enum Kind { DUST_DEVIL, WATERSPOUT, LANDSPOUT, SNOW_WHIRL, FIRE_WHIRL }
+    private static final class Whirl {
+        Vec3 pos;final Kind kind;final int life;final float size;
+        final dev.protomanly.pmweather.weather.Storm parentCloud;
+        int age;
+        Whirl(Vec3 pos,Kind kind,int life,dev.protomanly.pmweather.weather.Storm parentCloud,float size){
+            this.pos=pos;this.kind=kind;this.life=life;this.parentCloud=parentCloud;this.size=size;
+        }
+        void tick(ServerLevel level,long clock) {
+            Vec3 wind=WindEngine.getWind(BlockPos.containing(pos),level);
+            Vec3 next=pos.add(wind.x*(kind==Kind.DUST_DEVIL?.12:.5),0,
+                wind.z*(kind==Kind.DUST_DEVIL?.12:.5));
+            // A waterspout may follow the wind across a lake, but cannot
+            // continue as a waterspout over a bank or an unloaded chunk.
+            BlockPos nextSurface=BlockPos.containing(next).below();
+            if(kind!=Kind.WATERSPOUT ||
+                (level.hasChunkAt(nextSurface) && level.getFluidState(nextSurface).is(FluidTags.WATER)))
+                pos=next;
+            if(kind!=Kind.WATERSPOUT && level.hasChunkAt(BlockPos.containing(pos))) {
+                BlockPos surface=level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,BlockPos.containing(pos));
+                pos=new Vec3(pos.x,surface.getY()+.15,pos.z);
+            }
+            if(kind==Kind.DUST_DEVIL) {
+                // A single world-space density field, integrated by the custom
+                // shader on the client. No second visible dust particle funnel.
+                if(clock%20==0)for(ServerPlayer viewer:level.players())
+                    if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
+                        // count=0 carries one particle with size encoded in its
+                        // x velocity. The client factory uses it as scale only.
+                        level.sendParticles(viewer,EWParticles.DUST_VOLUME.get(),true,pos.x,pos.y,pos.z,0,size,0,0,1);
+            } else for(int i=0;i<(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT?36:9);i++) {
+                // A spout must reach toward its parent thundercloud, not stop
+                // sixteen blocks above the surface as the old particle ring did.
+                double height=(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT)?64:16;
+                // Stratify the column: independent random heights left large
+                // empty bands in individual client frames despite many sprites.
+                int bands=(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT)?36:9;
+                double h=(i+level.random.nextDouble())*height/bands;
+                double phase=clock*.25+h*.5+i*2.4;
+                double r=.8+h*(kind==Kind.WATERSPOUT || kind==Kind.LANDSPOUT?.045:.1);
+                var particle=kind==Kind.WATERSPOUT?EWParticles.WATER.get():kind==Kind.SNOW_WHIRL?EWParticles.SNOW.get():kind==Kind.FIRE_WHIRL?ModParticleTypes.FLAME.get():kind==Kind.DUST_DEVIL?EWParticles.DUST.get():EWParticles.LAND.get();
+                double x=pos.x+Math.cos(phase)*r,y=pos.y+h,z=pos.z+Math.sin(phase)*r;
+                // Natural whirls often begin 50 blocks away. Vanilla's default
+                // 32-block particle cutoff hid them even while server physics ran.
+                for(ServerPlayer viewer:level.players())
+                    if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
+                        level.sendParticles(viewer,particle,true,x,y,z,1,0,.1,0,.02);
+            }
+            if(kind==Kind.WATERSPOUT) {
+                // Keep surface contact legible even when cloud condensation
+                // blends into a bright sky. This is spray, not placed water.
+                for(ServerPlayer viewer:level.players())
+                    if(Math.hypot(viewer.getX()-pos.x,viewer.getZ()-pos.z)<120 && Math.abs(viewer.getY()-pos.y)<80)
+                        level.sendParticles(viewer,ParticleTypes.SPLASH,true,
+                            pos.x,pos.y+.15,pos.z,6,1.1,.05,1.1,.08);
+            }
+            if(kind==Kind.DUST_DEVIL)return; // visual-only: no block damage, lift or mob impulse
+            if(clock%20==0)for(LivingEntity entity:level.getEntitiesOfClass(LivingEntity.class,new AABB(pos,pos.add(0,15,0)).inflate(3))) {
+                if(entity instanceof ServerPlayer player && player.isCreative())continue;
+                double dx=entity.getX()-pos.x,dz=entity.getZ()-pos.z;
+                entity.push(-dz*.035,.12,dx*.035);entity.hurtMarked=true;
+                if(kind==Kind.FIRE_WHIRL)entity.setRemainingFireTicks(Math.max(entity.getRemainingFireTicks(),60));
+            }
+        }
+    }
+}

@@ -1,0 +1,46 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.91'
+}
+version = mod_version
+group = mod_group_id
+base { archivesName = mod_id }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+repositories {
+    mavenLocal()
+    maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' }
+    maven { name = 'DigitalUnderworldSnapshots'; url = 'https://maven.digitalunderworlds.com/snapshots/' }
+}
+neoForge {
+    version = neo_version
+    runs {
+        client {
+            client()
+            if (project.hasProperty('clientJoinAddress')) {
+                programArgument '--username'
+                programArgument 'ShaderTester'
+                programArgument '--quickPlayMultiplayer'
+                programArgument project.property('clientJoinAddress').toString()
+            }
+        }
+        server {
+            server(); programArgument '--nogui'
+            gameDirectory = project.file(project.findProperty('serverRunDir') ?: 'runserver')
+        }
+    }
+    mods { extremeweather { sourceSet(sourceSets.main) } }
+}
+dependencies {
+    implementation "maven.modrinth:protomanlys-weather:${pmweather_version}-alpha"
+    implementation "net.nullved:pmweatherapi:${pmweatherapi_version}"
+}
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var props = [mod_version: mod_version]
+    inputs.properties props
+    expand props
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

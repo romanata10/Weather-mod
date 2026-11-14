@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "extremeweather:block/weather_radar"
+    }
+  }
+}

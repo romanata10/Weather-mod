@@ -1,0 +1,744 @@
+name: Build NeoForge PM Addon
+on:
+  push:
+    branches: ['arena/5774b227-weather-mod']
+  workflow_dispatch:
+concurrency:
+  group: weather-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Gradle 8.8 from pinned GitHub release
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 3 \
+            'https://downloads.gradle.org/distributions/gradle-8.8-bin.zip' \
+            --output /tmp/gradle-8.8-bin.zip || \
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \
+            'https://github.com/gradle/gradle-distributions/releases/download/v8.8.0/gradle-8.8-bin.zip' \
+            --output /tmp/gradle-8.8-bin.zip
+          unzip -q /tmp/gradle-8.8-bin.zip -d /tmp
+          echo /tmp/gradle-8.8/bin >> "$GITHUB_PATH"
+          /tmp/gradle-8.8/bin/gradle --version
+      - name: Build JAR
+        shell: bash
+        run: |
+          gradle build --no-daemon > gradle-build.log 2>&1 || {
+            tail -45 gradle-build.log
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::error::$line"
+            done < <(grep -E "(^> |FAILURE:|What went wrong|error:|Could not|Caused by:|Exception|symbol:|location:|^\*|^Build file|^Execution failed)" gradle-build.log | tail -15)
+            exit 1
+          }
+          tail -30 gradle-build.log
+      - name: Audit expressiveness of the 23 requested native funnel presets
+        shell: bash
+        run: |
+          java -cp build/classes/java/main com.extremeweather.vortex.ShapeProfileReport > shape-profiles.log
+          cat shape-profiles.log
+          echo '::notice::Native shape parameters and endpoint mapping audited; this does not certify 23 rendered funnel silhouettes.'
+          tail -2 shape-profiles.log | while IFS= read -r line; do echo "::notice::$line"; done
+      - name: Validate runtime PMWeather particle textures
+        shell: bash
+        run: |
+          JAR=$(find "$HOME/.gradle" -type f -name 'protomanlys-weather-*.jar' | head -1)
+          test -n "$JAR"
+          {
+            python3 - "$JAR" <<'PYVALIDATE'
+          import json,sys,zipfile,pathlib
+          jar=zipfile.ZipFile(sys.argv[1]); names=set(jar.namelist())
+          for path in pathlib.Path('src/main/resources/assets/extremeweather/particles').glob('*.json'):
+              for texture in json.loads(path.read_text())['textures']:
+                  namespace,name=texture.split(':',1)
+                  resource=f'assets/{namespace}/textures/particle/{name}.png'
+                  if namespace=='pmweather':
+                      assert resource in names, texture
+                  else:
+                      assert pathlib.Path('src/main/resources',resource).is_file(), texture
+          assets=pathlib.Path('src/main/resources/assets/extremeweather')
+          siren=json.loads((assets/'blockstates/storm_siren.json').read_text())['variants']
+          assert siren['active=true']['model'] != siren['active=false']['model']
+          for variant in siren.values():
+              model_id=variant['model'].split(':',1)[1]
+              model=json.loads((assets/'models'/f'{model_id}.json').read_text())
+              for texture in model['textures'].values():
+                  namespace,name=texture.split(':',1)
+                  assert pathlib.Path('src/main/resources/assets',namespace,'textures',f'{name}.png').is_file(),texture
+          print('PMWeather particle IDs and both siren model textures validated')
+          PYVALIDATE
+          }
+      - name: Dedicated server and PMWeather command integration test
+        shell: bash
+        run: |
+          mkdir -p runserver
+          RCON_PASSWORD=$(openssl rand -hex 16)
+          printf 'eula=true\n' > eula.txt
+          printf 'eula=true\n' > runserver/eula.txt
+          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\npause-when-empty-seconds=-1\n' "$RCON_PASSWORD" > runserver/server.properties
+          tail -f /dev/null | timeout 270s gradle runServer --no-daemon > runserver-smoke.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for attempt in $(seq 1 150); do
+            if grep -Eq 'Done \([0-9.]+s\)!' runserver-smoke.log; then READY=1; break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            tail -90 runserver-smoke.log
+            echo '::error::Dedicated server did not reach ready state'
+            exit 1
+          fi
+          echo "Server configs: $(find . -name server.properties -print | head -5)"
+          grep -Ei '(RCON|Done \(|Starting Minecraft server|Preparing level|EULA)' runserver-smoke.log | tail -12 || true
+          python3 scripts/rcon_smoke.py "$RCON_PASSWORD" > rcon-smoke.log 2>&1 || {
+            cat rcon-smoke.log
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::error::$line"
+            done < <(tail -12 rcon-smoke.log)
+            echo "::error::Server properties: $(find . -name server.properties -print | head -5)"
+            echo "::error::Ready marker: $(grep -n 'Done (' runserver-smoke.log | tail -2)"
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::error::$line"
+            done < <(grep -Ei '(RCON|Done \(|Starting Minecraft server|server.properties|EULA|Stopping server|ERROR|WARN)' runserver-smoke.log | tail -14)
+            tail -50 runserver-smoke.log
+            exit 1
+          }
+          cat rcon-smoke.log
+          if grep -Fq 'HEADLESS LIMITATION: vanilla water did not flow' rcon-smoke.log; then
+            echo '::warning::Empty-server vanilla flow did not occur; only temporary-source placement and cleanup were verified in this run. Earlier isolated-basin CI observed lateral flow.'
+          fi
+          python3 scripts/rcon_funnel_lifetime.py "$RCON_PASSWORD" > funnel-lifetime.log 2>&1 || {
+            cat funnel-lifetime.log
+            exit 1
+          }
+          tail -3 funnel-lifetime.log
+          echo '::notice::Same native wedge retained its preset beyond 1230 dedicated-server game ticks; joined-client lifetime remains unverified.'
+      - name: Persist temporary flood source through a clean dedicated-server restart
+        shell: bash
+        run: |
+          RCON_PASSWORD=$(openssl rand -hex 16)
+          printf 'enable-rcon=true\nrcon.port=25575\nrcon.password=%s\nserver-port=25566\nonline-mode=false\npause-when-empty-seconds=-1\n' "$RCON_PASSWORD" > runserver/server.properties
+          ready_server() {
+            local logfile="$1" pid="$2"
+            for attempt in $(seq 1 150); do
+              if grep -Eq 'Done \([0-9.]+s\)!' "$logfile"; then return 0; fi
+              if ! kill -0 "$pid" 2>/dev/null; then break; fi
+              sleep 1
+            done
+            echo "::error::Restart probe server did not become ready: $logfile"
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::error::$line"
+            done < <(tail -25 "$logfile")
+            return 1
+          }
+          tail -f /dev/null | timeout 180s gradle runServer --no-daemon > surge-before.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          ready_server surge-before.log "$SERVER_PID"
+          python3 scripts/rcon_surge_restart.py stage "$RCON_PASSWORD" > surge-stage.log 2>&1 || {
+            while IFS= read -r line; do echo "::error::Surge stage: $line"; done < surge-stage.log
+            tail -45 surge-before.log; exit 1;
+          }
+          cat surge-stage.log
+          for attempt in $(seq 1 45); do
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo '::error::Server did not stop cleanly after save-all flush'
+            exit 1
+          fi
+          wait "$SERVER_PID" || true
+          tail -f /dev/null | timeout 180s gradle runServer --no-daemon > surge-after.log 2>&1 &
+          SERVER_PID=$!
+          ready_server surge-after.log "$SERVER_PID"
+          python3 scripts/rcon_surge_restart.py verify "$RCON_PASSWORD" > surge-verify.log 2>&1 || {
+            while IFS= read -r line; do echo "::error::Surge verify: $line"; done < surge-verify.log
+            tail -45 surge-after.log; exit 1;
+          }
+          cat surge-verify.log
+          echo '::notice::Temporary flood source survived a clean restart and was removed after /ew clear all; downstream flow remains unverified.'
+      - name: Optional in-world raymarch client probe (must connect to count)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          if ! command -v xvfb-run >/dev/null; then
+            echo '::warning::Xvfb not present; in-world client rendering untested'
+            exit 1
+          fi
+          mkdir -p runserver-visual
+          RCON_PASSWORD=$(openssl rand -hex 16)
+          printf 'eula=true\n' > runserver-visual/eula.txt
+          printf 'enable-rcon=true\nrcon.port=25576\nrcon.password=%s\nserver-port=25567\nonline-mode=false\npause-when-empty-seconds=-1\nallow-flight=true\nlevel-type=minecraft:flat\nview-distance=18\n' "$RCON_PASSWORD" > runserver-visual/server.properties
+          timeout 450s gradle runServer -PserverRunDir=runserver-visual --no-daemon > visual-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" "${CLIENT_PID:-}" 2>/dev/null || true' EXIT
+          READY=0
+          for attempt in $(seq 1 140); do
+            if grep -Eq 'Done \([0-9.]+s\)!' visual-server.log; then READY=1; break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then tail -65 visual-server.log; exit 1; fi
+          # A fresh client otherwise pauses on the first-launch accessibility
+          # screen BEFORE Quick Play attempts to contact our dedicated server.
+          mkdir -p run
+          printf 'version:3955\nnarrator:0\nonboardAccessibility:false\nskipMultiplayerWarning:true\nrenderDistance:18\n' > run/options.txt
+          cp run/options.txt options.txt
+          timeout 360s xvfb-run -a -s '-screen 0 1280x720x24' bash -c '
+            gradle runClient -PclientJoinAddress=127.0.0.1:25567 --no-daemon > client-smoke.log 2>&1 &
+            GAME=$!
+            python3 -m pip install --quiet pillow > capture-install.log 2>&1 || true
+            for attempt in $(seq 1 170); do
+              if [ -f baseline-now ]; then
+                python3 scripts/capture_client.py client-baseline.png > baseline-capture.log 2>&1 || true
+                rm baseline-now
+              fi
+              if [ -f capture-now ]; then
+                sleep 0.2
+                python3 scripts/capture_client.py > capture.log 2>&1 || true
+                break
+              fi
+              sleep 1
+            done
+            # The native storm probe waits ten seconds for PMWeather to tick;
+            # keep this framebuffer worker alive until that staging finishes.
+            for attempt in $(seq 1 100); do
+              if [ -f native-vortex-now ]; then
+                python3 scripts/capture_client.py native-vortex-screen.png > native-vortex-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            for attempt in $(seq 1 100); do
+              if [ -f native-rope-now ]; then
+                python3 scripts/capture_client.py native-rope-screen.png > native-rope-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            for attempt in $(seq 1 100); do
+              if [ -f native-multi-now ]; then
+                python3 scripts/capture_client.py native-multi-screen.png > native-multi-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            for attempt in $(seq 1 40); do
+              if [ -f native-multi-top-now ]; then
+                python3 scripts/capture_client.py native-multi-top-screen.png > native-multi-top-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            for preset in dead-man el-reno; do
+              for attempt in $(seq 1 100); do
+                if [ -f "native-$preset-now" ]; then
+                  if [ ! -f "native-$preset-skip" ]; then
+                    python3 scripts/capture_client.py "native-$preset-screen.png" > "native-$preset-capture.log" 2>&1 || true
+                  fi
+                  break
+                fi
+                sleep .2
+              done
+            done
+            for attempt in $(seq 1 30); do
+              if [ -f cyclone-now ]; then
+                python3 scripts/capture_client.py cyclone-screen.png > cyclone-capture.log 2>&1 || true
+                break
+              fi
+              sleep 1
+            done
+            for attempt in $(seq 1 30); do
+              if [ -f sprite-now ]; then
+                python3 scripts/capture_client.py sprite-screen.png > sprite-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            for attempt in $(seq 1 60); do
+              if [ -f waterspout-now ]; then
+                python3 scripts/capture_client.py waterspout-screen.png > waterspout-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            for attempt in $(seq 1 30); do
+              if [ -f whirlpool-now ]; then
+                python3 scripts/capture_client.py whirlpool-screen.png > whirlpool-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            for attempt in $(seq 1 80); do
+              if [ -f wave-now ]; then
+                python3 scripts/capture_client.py wave-screen.png > wave-capture.log 2>&1 || true
+                sleep 1
+                python3 scripts/capture_client.py wave-later-screen.png > wave-later-capture.log 2>&1 || true
+                break
+              fi
+              sleep .2
+            done
+            wait "$GAME"
+          ' &
+          CLIENT_PID=$!
+          python3 scripts/rcon_client_probe.py "$RCON_PASSWORD" > probe.log 2>&1 || {
+            cat probe.log;tail -55 client-smoke.log;tail -30 visual-server.log;exit 1;
+          }
+          cat probe.log
+          FOUND=0
+          for attempt in $(seq 1 30); do
+            if grep -Fq 'ExtremeWeather dust volume rendered with world GUI visible' client-smoke.log; then FOUND=1; break; fi
+            if ! kill -0 "$CLIENT_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$FOUND" -ne 1 ]; then
+            tail -75 client-smoke.log
+            echo '::warning::Real client did not report drawing the dust volume'
+            exit 1
+          fi
+          echo '::notice::Client DustVolumeParticle.render executed in a joined Minecraft world.'
+          # Capture immediately after the shader particle is observed in-world,
+          # not a minute later when the short-lived vortex has expired.
+          touch capture-now
+          for attempt in $(seq 1 25); do
+            if [ -f client-screen.png ]; then break; fi
+            if ! kill -0 "$CLIENT_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ ! -f client-screen.png ]; then
+            echo '::warning::In-world render called, but framebuffer capture failed'
+            exit 1
+          fi
+          echo 'Client renderer executed and framebuffer captured; appearance still needs review.'
+          if python3 scripts/rcon_native_vortex_probe.py "$RCON_PASSWORD" > native-vortex-probe.log 2>&1; then
+            touch native-vortex-now
+            for attempt in $(seq 1 60); do
+              if [ -f native-vortex-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f native-vortex-screen.png ]; then
+              echo '::notice::Native PMWeather wedge framebuffer captured; funnel visibility and fidelity require manual review.'
+            else
+              echo '::warning::Native PMWeather wedge framebuffer unavailable'
+            fi
+          else
+            echo '::warning::Native PMWeather wedge staging failed'
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}; line=${line//$'\r'/'%0D'}; line=${line//$'\n'/'%0A'}
+              echo "::warning::Native funnel probe: $line"
+            done < <(tail -8 native-vortex-probe.log)
+          fi
+          if python3 scripts/rcon_native_vortex_probe.py "$RCON_PASSWORD" rope > native-rope-probe.log 2>&1; then
+            touch native-rope-now
+            for attempt in $(seq 1 60); do
+              if [ -f native-rope-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f native-rope-screen.png ]; then
+              echo '::notice::Native PMWeather rope framebuffer captured for visual comparison with wedge; shapes require manual review.'
+              grep -F 'native rope state:' native-rope-probe.log | tail -1 | cut -c1-950 | while IFS= read -r line; do
+                echo "::notice::Server rope geometry: $line"
+              done
+              grep -F 'native wedge state:' native-vortex-probe.log | tail -1 | cut -c1-950 | while IFS= read -r line; do
+                echo "::notice::Server wedge geometry: $line"
+              done
+              grep -F 'ExtremeWeather client native funnel geometry:' client-smoke.log | tail -4 | while IFS= read -r line; do
+                echo "::notice::Joined client native geometry: $line"
+              done
+              grep -F 'ExtremeWeather joined client applied authoritative taper:' client-smoke.log | tail -4 | while IFS= read -r line; do
+                echo "::notice::Joined client taper override: $line"
+              done
+              if [ "$(grep -Fc 'ExtremeWeather joined client applied authoritative taper:' client-smoke.log)" -lt 2 ]; then
+                echo '::warning::Native shape packets did not visibly reach both staged client funnels.'
+              fi
+              if [ "$(grep -Fc 'ExtremeWeather client native funnel geometry:' client-smoke.log)" -lt 2 ]; then
+                echo '::warning::Joined client did not report both narrow and wide native storm parameters.'
+              fi
+            else
+              echo '::warning::Native PMWeather rope framebuffer unavailable'
+            fi
+          else
+            echo '::warning::Native PMWeather rope staging failed'
+            while IFS= read -r line; do echo "::warning::Rope probe: $line"; done < <(tail -5 native-rope-probe.log)
+          fi
+          if python3 scripts/rcon_native_vortex_probe.py "$RCON_PASSWORD" multi_vortex > native-multi-probe.log 2>&1; then
+            touch native-multi-now
+            for attempt in $(seq 1 60); do
+              if [ -f native-multi-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f native-multi-screen.png ]; then
+              echo '::notice::Native four-satellite PMWeather funnel framebuffer captured; actual satellite visibility requires review.'
+              if grep -Fq 'ExtremeWeather client native sub-vortices synchronized:' client-smoke.log; then
+                echo '::notice::The joined client received four PMWeather-native satellite vortices.'
+              else
+                echo '::warning::Server has four native satellites, but joined client did not report four synchronized satellites.'
+              fi
+            else
+              echo '::warning::Native multi-vortex framebuffer unavailable'
+            fi
+          else
+            echo '::warning::Native multi-vortex staging failed'
+            while IFS= read -r line; do echo "::warning::Multi-vortex probe: $line"; done < <(tail -5 native-multi-probe.log)
+          fi
+          if [ -f native-multi-screen.png ] && python3 scripts/rcon_native_multi_overhead.py "$RCON_PASSWORD" > native-multi-top-probe.log 2>&1; then
+            touch native-multi-top-now
+            for attempt in $(seq 1 40); do
+              if [ -f native-multi-top-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f native-multi-top-screen.png ]; then
+              echo '::notice::Same four-satellite native funnel captured from an elevated camera; distinct satellite visibility requires review.'
+            else
+              echo '::warning::Elevated multi-vortex framebuffer unavailable'
+            fi
+          else
+            echo '::warning::Could not stage elevated multi-vortex camera'
+            if [ -f native-multi-top-probe.log ]; then
+              while IFS= read -r line; do echo "::warning::Elevated multi probe: $line"; done < <(tail -4 native-multi-top-probe.log)
+            fi
+          fi
+          for entry in 'dead_man_walking dead-man' 'el_reno el-reno'; do
+            read -r shape label <<< "$entry"
+            if python3 scripts/rcon_native_vortex_probe.py "$RCON_PASSWORD" "$shape" > "native-$label-probe.log" 2>&1; then
+              touch "native-$label-now"
+              for attempt in $(seq 1 60); do
+                if [ -f "native-$label-screen.png" ]; then break; fi
+                sleep .2
+              done
+              if [ -f "native-$label-screen.png" ]; then
+                echo "::notice::Native $shape client frame captured; satellite shape/scale still needs visual review."
+              else
+                echo "::warning::Native $shape client frame unavailable"
+              fi
+            else
+              echo "::warning::Native $shape client staging failed"
+              tail -5 "native-$label-probe.log"
+              # Release the framebuffer worker without mislabeling a failed probe.
+              touch "native-$label-skip" "native-$label-now"
+            fi
+          done
+          python3 scripts/rcon_cyclone_probe.py "$RCON_PASSWORD" > cyclone-probe.log 2>&1 || {
+            echo '::warning::Native cyclone client probe failed'
+            tail -12 cyclone-probe.log
+            exit 1
+          }
+          tail -4 cyclone-probe.log
+          touch cyclone-now
+          for attempt in $(seq 1 20); do
+            if [ -f cyclone-screen.png ]; then break; fi
+            sleep 1
+          done
+          test -f cyclone-screen.png || { echo '::warning::Cyclone framebuffer not captured'; exit 1; }
+          echo '::notice::Native cyclone client screenshot captured; visual appearance still needs manual review.'
+          if python3 scripts/rcon_sprite_probe.py "$RCON_PASSWORD" > sprite-probe.log 2>&1; then
+            # The first render log precedes presentation of that GPU frame.
+            sleep 0.65
+            touch sprite-now
+            for attempt in $(seq 1 30); do
+              if [ -f sprite-screen.png ]; then break; fi
+              sleep .2
+            done
+            if [ -f sprite-screen.png ]; then
+              echo '::notice::Sprite screenshot captured from native storm; branching appearance needs review.'
+            else
+              echo '::warning::Sprite framebuffer not captured'
+            fi
+          else
+            echo '::warning::Nighttime PMWeather-cloud sprite probe failed; continuing to water check'
+            tail -10 sprite-probe.log
+          fi
+          python3 scripts/rcon_waterspout_probe.py "$RCON_PASSWORD" > waterspout-probe.log 2>&1 || {
+            DATA=$(tail -12 waterspout-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::error::Joined-client PM-cloud waterspout probe failed%0A$DATA"
+            tail -10 waterspout-probe.log
+            exit 1
+          }
+          touch waterspout-now
+          for attempt in $(seq 1 60); do
+            if [ -f waterspout-screen.png ]; then break; fi
+            sleep .2
+          done
+          test -f waterspout-screen.png || { echo '::warning::Waterspout framebuffer missing'; exit 1; }
+          DATA=$(tail -4 waterspout-probe.log); DATA=${DATA//$'\n'/'%0A'}
+          echo "::notice::Waterspout staging (not visibility proof)%0A$DATA"
+          if grep -Fq 'ExtremeWeather waterspout particle rendered:' client-smoke.log; then
+            echo "::notice::$(grep -F 'ExtremeWeather waterspout particle rendered:' client-smoke.log | head -1)"
+          else
+            echo '::warning::No joined-client waterspout particle render observed'
+          fi
+          echo '::notice::Waterspout under a native supercell captured; shape/visibility requires manual review.'
+          python3 scripts/rcon_whirlpool_probe.py "$RCON_PASSWORD" > whirlpool-probe.log 2>&1 || {
+            echo '::warning::Joined-client whirlpool visual probe failed'
+            tail -10 whirlpool-probe.log
+            exit 1
+          }
+          touch whirlpool-now
+          for attempt in $(seq 1 90); do
+            if [ -f whirlpool-screen.png ]; then break; fi
+            sleep .2
+          done
+          test -f whirlpool-screen.png || { echo '::warning::Whirlpool framebuffer missing'; exit 1; }
+          echo '::notice::Whirlpool in-world screenshot captured; visual appearance still needs manual review.'
+          python3 scripts/rcon_wave_probe.py "$RCON_PASSWORD" > wave-probe.log 2>&1 || {
+            echo '::warning::Joined-client tsunami front did not push the staged water mob'
+            while IFS= read -r line; do echo "::warning::Wave probe: $line"; done < <(tail -8 wave-probe.log)
+            exit 1
+          }
+          tail -4 wave-probe.log
+          # The probe signals at the measured impulse, not after it returns:
+          # otherwise the fast-moving front may have left the camera view.
+          for attempt in $(seq 1 90); do
+            if [ -f wave-screen.png ] && [ -f wave-later-screen.png ]; then break; fi
+            sleep .2
+          done
+          test -f wave-screen.png && test -f wave-later-screen.png || { echo '::warning::Wave framebuffer pair missing'; exit 1; }
+          python3 scripts/compare_wave_screens.py
+          if ! grep -Fq 'ExtremeWeather wave crest sprite rendered in joined client' client-smoke.log; then
+            echo '::error::Joined client did not render the custom wave crest sprite'
+            exit 1
+          fi
+          echo '::notice::Joined client rendered custom wave crest; framebuffer shape still requires manual review.'
+          python3 scripts/rcon_remote_wave_probe.py "$RCON_PASSWORD" > remote-wave-probe.log 2>&1 || {
+            DATA=$(tail -10 remote-wave-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::error::Unattended loaded-ocean wave probe failed%0A$DATA"
+            exit 1
+          }
+          echo '::notice::Wave pushed a forceloaded water mob after the only player moved away from the front.'
+          if python3 scripts/rcon_funnel_lifetime.py "$RCON_PASSWORD" 25576 > joined-funnel-lifetime.log 2>&1; then
+            tail -3 joined-funnel-lifetime.log
+            echo '::notice::Same native wedge retained server geometry and client taper for 1230+ game ticks; full visual fidelity still requires review.'
+          else
+            echo '::warning::Joined-client long-lived native funnel probe failed'
+            tail -8 joined-funnel-lifetime.log
+            exit 1
+          fi
+          python3 scripts/rcon_natural_squall_probe.py "$RCON_PASSWORD" > natural-squall-probe.log 2>&1 || {
+            echo '::warning::Existing PMWeather squall was not adopted near a joined player'
+            tail -8 natural-squall-probe.log
+            exit 1
+          }
+          tail -2 natural-squall-probe.log
+      - name: Require joined-client native funnel lifetime evidence
+        shell: bash
+        run: |
+          test -f joined-funnel-lifetime.log || { echo '::error::Long-lived joined-client probe did not run'; exit 1; }
+          grep -F 'joined client long-lived taper:' joined-funnel-lifetime.log || {
+            echo '::error::A 1230-tick server check alone does not prove joined-client shape persistence'
+            tail -12 joined-funnel-lifetime.log
+            exit 1
+          }
+          echo '::notice::Joined Minecraft client retained the same PMWeather funnel taper past 1230 game ticks; visual silhouette still requires review.'
+          test -f natural-squall-probe.log || { echo '::error::Joined-client native squall adoption probe did not run'; exit 1; }
+          grep -F 'adopted original PMWeather squall:' natural-squall-probe.log || {
+            echo '::error::PMWeather squall cloud was not picked up without an addon disaster command'
+            exit 1
+          }
+          echo '::notice::Addon adopted an existing PMWeather squall beside a joined player; natural occurrence frequency remains unverified.'
+      - name: Summarize in-world client probe for review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f probe.log ]; then
+            DATA=$(tail -10 probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::RCON probe%0A$DATA"
+          fi
+          if [ -f client-smoke.log ]; then
+            if grep -Fq 'ExtremeWeather dust volume rendered with world GUI visible' client-smoke.log; then
+              echo '::notice::Real Minecraft client called DustVolumeParticle.render in-world'
+            fi
+            DATA=$(grep -Ei '(quick.?play|connect|join|extremeweather|failed|exception|server address|asset|missing)' client-smoke.log | grep -vi 'ALSA lib' | tail -16 || true)
+            DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Client connection/shader events%0A$DATA"
+            DATA=$(grep -viE 'ALSA lib|OpenAL|pa_alsa|pulseaudio' client-smoke.log | tail -13 || true)
+            DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Client log tail%0A$DATA"
+          fi
+          if [ -f client-screen.png ]; then
+            echo "::notice::Captured headless client screen ($(wc -c < client-screen.png) bytes)"
+            python3 scripts/compare_client_screens.py || echo '::warning::Client framebuffer comparison unavailable'
+            python3 scripts/annotate_client_screen.py || echo '::warning::Could not compress framebuffer preview for annotations; artifact still contains full PNG' 
+            if command -v tesseract >/dev/null; then
+              TEXT=$(tesseract client-screen.png stdout 2>/dev/null | head -35 || true)
+              TEXT=${TEXT//$'\n'/'%0A'}
+              echo "::notice::Client screen OCR%0A$TEXT"
+            fi
+          else
+            echo "::warning::Client screen capture unavailable: $(cat capture.log 2>/dev/null | head -3)"
+          fi
+          if [ -f whirlpool-probe.log ]; then
+            DATA=$(tail -4 whirlpool-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Whirlpool in-world probe%0A$DATA"
+          fi
+          if [ -f sprite-probe.log ]; then
+            echo "::notice::Sprite timing: $(grep 'sprite: ' sprite-probe.log | tail -1); $(cat sprite-capture.log 2>/dev/null | tail -1)"
+            if grep -Fq 'ExtremeWeather red sprite particle rendered' client-smoke.log; then
+              echo "::notice::$(grep -F 'ExtremeWeather red sprite particle rendered' client-smoke.log | head -1)"
+            else
+              echo '::warning::No SpriteGlowParticle render call observed in joined client'
+            fi
+            DATA=$(tail -3 sprite-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Sprite in-world probe%0A$DATA"
+          fi
+          if [ -f native-vortex-probe.log ]; then
+            DATA=$(tail -3 native-vortex-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Native funnel staging%0A$DATA"
+          fi
+          if [ -f cyclone-probe.log ]; then
+            DATA=$(tail -4 cyclone-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Cyclone in-world probe%0A$DATA"
+          fi
+          if [ -f visual-server.log ]; then
+            DATA=$(grep -Ei '(Done \(|joined the game|left the game|disconnect|error|exception)' visual-server.log | tail -9 || true)
+            DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Server connection events%0A$DATA"
+          fi
+      - name: Verify existing PMWeather cyclone was adopted once
+        if: always()
+        shell: bash
+        run: |
+          if [ -f cyclone-probe.log ]; then
+            DATA=$(tail -3 cyclone-probe.log); DATA=${DATA//$'\n'/'%0A'}
+            echo "::notice::Native cyclone adoption%0A$DATA"
+          fi
+      - name: Show ocean wavefront preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f wave-screen.png ]; then
+            python3 scripts/annotate_client_screen.py wave-screen.png || echo '::warning::Wave thumbnail unavailable'
+          fi
+          if [ -f wave-later-screen.png ]; then
+            python3 scripts/annotate_client_screen.py wave-later-screen.png || echo '::warning::Later wave thumbnail unavailable'
+          fi
+      # GitHub displays only the first 50 check annotations. Keep current
+      # wave and waterspout frames ahead of archived funnel thumbnails.
+      - name: Show native-cloud waterspout preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f waterspout-screen.png ]; then
+            python3 scripts/annotate_client_screen.py waterspout-screen.png || echo '::warning::Waterspout thumbnail unavailable'
+          fi
+      - name: Show unmodified client baseline in separate check annotations
+        if: always()
+        shell: bash
+        run: |
+          if [ -f client-baseline.png ]; then
+            python3 scripts/annotate_client_screen.py client-baseline.png || echo '::warning::Baseline thumbnail unavailable'
+          fi
+      - name: Show native PMWeather wedge preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f native-vortex-screen.png ]; then
+            python3 scripts/annotate_client_screen.py native-vortex-screen.png || echo '::warning::Native funnel thumbnail unavailable'
+          fi
+      - name: Show native PMWeather rope preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f native-rope-screen.png ]; then
+            python3 scripts/annotate_client_screen.py native-rope-screen.png || echo '::warning::Native rope thumbnail unavailable'
+          fi
+      - name: Show native PMWeather multi-vortex preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f native-multi-screen.png ]; then
+            python3 scripts/annotate_client_screen.py native-multi-screen.png || echo '::warning::Native multi-vortex thumbnail unavailable'
+          fi
+      - name: Show elevated native multi-vortex preview for manual review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f native-multi-top-screen.png ]; then
+            python3 scripts/annotate_client_screen.py native-multi-top-screen.png || echo '::warning::Elevated multi-vortex thumbnail unavailable'
+          fi
+      - name: Show rare native tornado previews for manual review
+        if: always()
+        shell: bash
+        run: |
+          for preset in dead-man el-reno; do
+            if [ -f "native-$preset-screen.png" ]; then
+              python3 scripts/annotate_client_screen.py "native-$preset-screen.png" || echo "::warning::$preset thumbnail unavailable"
+            fi
+          done
+      - name: Show native cyclone client preview in separate check annotations
+        if: always()
+        shell: bash
+        run: |
+          if [ -f cyclone-screen.png ]; then
+            python3 scripts/annotate_client_screen.py cyclone-screen.png || echo '::warning::Cyclone thumbnail unavailable'
+          fi
+      - name: Show PMWeather-cloud sprite preview in separate check annotations
+        if: always()
+        shell: bash
+        run: |
+          if [ -f sprite-screen.png ]; then
+            python3 scripts/annotate_client_screen.py sprite-screen.png || echo '::warning::Sprite thumbnail unavailable'
+          fi
+      - name: Show water whirlpool preview in separate check annotations
+        if: always()
+        shell: bash
+        run: |
+          if [ -f whirlpool-screen.png ]; then
+            python3 scripts/annotate_client_screen.py whirlpool-screen.png || echo '::warning::Whirlpool thumbnail unavailable'
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: headless-client-screen
+          path: |
+            client-screen.png
+            client-baseline.png
+            native-vortex-screen.png
+            native-rope-screen.png
+            native-multi-screen.png
+            native-multi-top-screen.png
+            native-dead-man-screen.png
+            native-el-reno-screen.png
+            cyclone-screen.png
+            sprite-screen.png
+            whirlpool-screen.png
+            waterspout-screen.png
+            wave-screen.png
+            wave-later-screen.png
+            joined-funnel-lifetime.log
+            natural-squall-probe.log
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extremeweather-pm-neoforge-1.21.1
+          path: build/libs/*.jar
+          if-no-files-found: error
+      - name: Publish preview JAR to GitHub Releases
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          JAR=$(find build/libs -maxdepth 1 -name 'extremeweather-*.jar' ! -name '*-sources.jar' | head -1)
+          test -n "$JAR"
+          if gh release view v2.3.0-preview >/dev/null 2>&1; then
+            gh release upload v2.3.0-preview "$JAR" --clobber
+          else
+            gh release create v2.3.0-preview "$JAR" --target "$GITHUB_SHA" --prerelease \
+              --title 'Extreme Weather PM Addon 2.3.0 Preview (NeoForge 1.21.1)' \
+              --notes 'Experimental preview. Requires Minecraft 1.21.1 + NeoForge 21.1, PMWeather 0.16.4-alpha, PMWeatherAPI 0.16.4.1 and this addon on both client and server. Single native tornado without an added silhouette; PMWeather-cloud-gated sprites and small water whirlpools; server-tested wildfire and flood water. Client graphics and full 17-feature specification NOT verified. Back up your world; see README for limits.'
+          fi

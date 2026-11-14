@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=false": {
+      "model": "extremeweather:block/storm_siren"
+    },
+    "active=true": {
+      "model": "extremeweather:block/storm_siren_active"
+    }
+  }
+}
