@@ -85,8 +85,11 @@ public final class TropicalSystems {
             if(ticks%40==0)system.updateNativeStorm(ocean);
             system.render(level,ticks);
             if(ticks%40==0)system.gust(level,wind);
-            // A very rare pressure-driven meteotsunami, not a seismic earthquake.
-            if(system.basin==Basin.CYCLONE && system.age%200==0 && pulses.size()<2 && level.random.nextInt(30)==0)
+            // A pressure-driven meteotsunami needs an ocean beneath the
+            // cyclone. A former offshore cyclone must not start a new ocean
+            // wave after landfall over a freshwater pond or a dry biome.
+            if(ocean && system.basin==Basin.CYCLONE && system.age%200==0 &&
+                pulses.size()<2 && level.random.nextInt(30)==0)
                 pulses.add(new Pulse(system.center));
         }
     }

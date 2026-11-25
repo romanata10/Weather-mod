@@ -45,6 +45,11 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
         if 'force' not in reply.lower():raise AssertionError('Forceload failed: '+reply)
     fish=command(sock,9,2,f'summon minecraft:cod {x+18} 63 {z} {{PersistenceRequired:1b}}')
     if 'Summoned' not in fish:raise AssertionError('Remote fish missing: '+fish)
+    # A stationary pig on a dry stone island lies inside the same annulus.
+    # It must not receive a tsunami impulse simply because it is near water.
+    command(sock,55,2,f'setblock {x+8} 63 {z} minecraft:stone')
+    pig=command(sock,56,2,f'summon minecraft:pig {x+8} 64 {z} {{NoAI:1b,NoGravity:1b,PersistenceRequired:1b}}')
+    if 'Summoned' not in pig:raise AssertionError('Dry control missing: '+pig)
     command(sock,10,2,'execute as @a at @s run tp @s ~200 90 ~200')
     started=command(sock,11,2,f'ew disaster tsunami {x} 64 {z}')
     if 'Started tsunami' not in started:raise AssertionError('Remote wave missing: '+started)
@@ -56,7 +61,15 @@ with socket.create_connection(('127.0.0.1',25576),timeout=8) as sock:
             print('no-player-near-front cod impulse:',status,flush=True)
             break
     else:raise AssertionError('Forceloaded cod was not hit without a player near the front: '+status)
+    pig_pos=command(sock,57,2,f'data get entity @e[type=minecraft:pig,x={x+8},y=64,z={z},distance=..12,limit=1] Pos')
+    match=re.search(r'\[([^]]+)\]',pig_pos)
+    if not match:raise AssertionError('Dry control disappeared: '+pig_pos)
+    px,py,pz=[float(v.rstrip('dDfF')) for v in match.group(1).split(', ')]
+    if abs(px-(x+8))>.2 or abs(pz-z)>.2:
+        raise AssertionError('Tsunami moved a dry pig: '+pig_pos)
+    print('dry control remained still:',pig_pos,flush=True)
     command(sock,50,2,'ew clear all')
     command(sock,51,2,f'forceload remove {x} {z}')
     command(sock,52,2,f'forceload remove {x+18} {z}')
     command(sock,53,2,f'kill @e[type=minecraft:cod,x={x},y=63,z={z},distance=..50]')
+    command(sock,58,2,f'kill @e[type=minecraft:pig,x={x},y=64,z={z},distance=..30]')
