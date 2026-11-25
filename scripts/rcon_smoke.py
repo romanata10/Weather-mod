@@ -85,8 +85,13 @@ with connection as conn:
         print("Vanilla lateral flow observed before addon cleanup",flush=True)
     check(178,"ew clear all","PMWeather storms and addon weather cleared")
     time.sleep(4)
-    check(179,"execute if block 4100 64 8 minecraft:air","passed")
-    check(180,"execute if block 4101 64 8 minecraft:air","passed")
+    # Vanilla flow can briefly occupy either cell again after our tracked
+    # source is removed. Require absence of SOURCE water, not an always-air
+    # cell in an active fluid simulation; log any remaining flow explicitly.
+    check(179,"execute unless block 4100 64 8 minecraft:water[level=0]","passed")
+    check(180,"execute unless block 4101 64 8 minecraft:water[level=0]","passed")
+    print("post-cleanup basin cells:",send(conn,185,2,"execute if block 4100 64 8 minecraft:water"),
+          send(conn,186,2,"execute if block 4101 64 8 minecraft:water"),flush=True)
     print("prepare wildfire fuel:",send(conn,11,2,"setblock 0 70 0 minecraft:grass_block"),flush=True)
     check(54, "execute if block 0 70 0 minecraft:grass_block", "passed")
     send(conn, 12, 2, "setblock 0 71 0 minecraft:air")  # air may already exist
